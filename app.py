@@ -1,11 +1,17 @@
 from flask import Flask, render_template, request
-import requests
+import requests # On le garde pour d'éventuels futurs appels simples
+import cloudscraper # On importe la nouvelle librairie
 import logging
 import time
 
 app = Flask(__name__)
 
-# ... (Les filtres de formatage restent les mêmes) ...
+# Crée une instance de cloudscraper qui sera utilisée pour toutes les requêtes
+scraper = cloudscraper.create_scraper() 
+
+# ==============================================================================
+# FILTRES DE FORMATAGE (inchangés)
+# ==============================================================================
 @app.template_filter()
 def format_price(value):
     if not isinstance(value, (int, float)): return "N/A"
@@ -20,7 +26,9 @@ def format_market_cap(value):
     if value > 1_000: return f"${value/1_000:.2f}K"
     return f"${int(value)}"
 
-# ... (L'analyse stratégique reste la même) ...
+# ==============================================================================
+# ANALYSE STRATÉGIQUE (inchangée)
+# ==============================================================================
 def analyze_token_strategy(pair_data):
     reasons = []
     liquidity = pair_data.get("liquidity", {}).get("usd", 0)
@@ -50,20 +58,23 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 def get_dexscreener_data(token_or_pair_address):
-    # MESSAGE DE TEST AJOUTÉ ICI
-    logger.info("--- Exécution de la fonction get_dexscreener_data VERSION 2 ---")
+    logger.info("--- Exécution de la fonction get_dexscreener_data AVEC CLOUDSCRAPER ---")
     try:
         url = f"https://api.dexscreener.com/latest/dex/search?q={token_or_pair_address}"
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 1.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
-        }
-        response = requests.get(url, headers=headers, timeout=15)
+        
+        # ON UTILISE SCRAPER.GET AU LIEU DE REQUESTS.GET
+        response = scraper.get(url, timeout=15)
+        
+        logger.info(f"Statut de la réponse Cloudscraper : {response.status_code}")
+
         response.raise_for_status()
         data = response.json()
+        
         if data.get("pairs"):
             return data["pairs"][0]
         else:
             return None
+            
     except requests.exceptions.RequestException as e:
         logger.error(f"Erreur API DexScreener pour {token_or_pair_address}: {e}")
         return None

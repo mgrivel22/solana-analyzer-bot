@@ -17,9 +17,8 @@
         .nav-link { color: var(--primary-color); text-decoration: none; font-size: 1.1rem; }
         .btn-main-trade { padding: 10px 20px; background-color: var(--axiom-purple); color: white; font-weight: bold; text-decoration: none; border-radius: 8px; transition: all 0.2s; }
         .btn-main-trade:hover { background-color: #7b24cb; transform: scale(1.05); }
-        .results-grid { display: grid; grid-template-columns: 1fr; gap: 2.5rem; }
-        .result-card { background-color: var(--surface-color); padding: 1.5rem 2rem; border-radius: 12px; opacity: 0.5; transition: opacity 0.5s; }
-        .card-header { margin-bottom: 1.5rem; border-bottom: 1px solid #333; padding-bottom: 1rem; min-height: 50px; }
+        .result-card { background-color: var(--surface-color); padding: 1.5rem 2rem; border-radius: 12px; }
+        .card-header { margin-bottom: 1.5rem; border-bottom: 1px solid #333; padding-bottom: 1rem; }
         .card-header h2 { margin: 0; font-size: 1.8rem; display: inline-block; }
         .card-header .symbol { font-size: 1.2rem; color: var(--secondary-text-color); margin-left: 10px; }
         .error { color: var(--score-bad); font-weight: bold; }
@@ -32,106 +31,106 @@
         .btn { display: block; color: white; text-align: center; padding: 10px; border-radius: 8px; text-decoration: none; font-weight: bold; transition: opacity 0.2s; }
         .btn:hover { opacity: 0.8; }
         .btn-axiom-specific { background-color: var(--axiom-purple); } .btn-solscan { background-color: #1a5c8b; } .btn-rugcheck { background-color: #c79500; }
-        .right-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+        .right-panel { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
         .score-card { background-color: #2a2a2a; padding: 1.5rem; border-radius: 8px; text-align: center; }
         .score-card h3 { margin-top: 0; font-size: 1.1rem; color: var(--secondary-text-color); }
         .score-value { font-size: 3rem; font-weight: bold; margin: 0.5rem 0; }
-        .score-breakdown { font-size: 0.9em; }
-        .total-score-card { grid-column: 1 / -1; }
-        .total-score-value { font-size: 5rem; }
-        .ai-reason { font-style: italic; font-size: 0.8em; color: #aaa; margin-top: 5px; }
+        .ai-verdict-card { grid-column: 1 / -1; border: 2px solid var(--primary-color); }
+        .ai-verdict-card .verdict { font-size: 2.5rem; font-weight: bold; }
+        .verdict-BUY { color: var(--score-good); } .verdict-HOLD { color: var(--score-medium); } .verdict-WAIT { color: var(--score-bad); }
+        .ai-summary { font-style: italic; font-size: 0.9em; color: #ccc; margin-top: 10px; }
         .loader { text-align: center; padding: 2rem; font-size: 1.2rem; color: #888; }
-        @media (max-width: 900px) { .main-content { grid-template-columns: 1fr; } .right-panel { grid-template-columns: 1fr 1fr; } }
-        @media (max-width: 600px) { .right-panel { grid-template-columns: 1fr; } }
+        @media (max-width: 900px) { .main-content { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📈 Résultats d'Analyse Approfondie</h1>
+        <h1>Analyse IA & Scoring Avancé</h1>
         <div class="top-nav">
             <a href="/" class="nav-link">← Nouvelle Analyse</a>
             <a href="https://axiom.trade/@math96826" target="_blank" class="btn-main-trade">TRADER AVEC AXIOM</a>
         </div>
-        <div class="results-grid">
-            {% for token in tokens %}
-            <div class="result-card" id="card-{{ loop.index0 }}">
-                <div class="card-header"><h2>Analyse en cours...</h2><span class="symbol">{{ token[:6] }}...</span></div>
-                <div class="loader">Chargement des données depuis votre navigateur...</div>
-                <div class="content-wrapper" style="display: none;"></div>
-            </div>
-            {% endfor %}
+        {% for token in tokens %}
+        <div class="result-card" id="card-{{ loop.index0 }}">
+            <div class="card-header"><h2>Analyse en cours...</h2><span class="symbol">{{ token[:6] }}...</span></div>
+            <div class="loader">Étape 1/2 : Récupération des données de marché...</div>
+            <div class="content-wrapper" style="display: none;"></div>
         </div>
+        {% endfor %}
     </div>
 
     <script>
     document.addEventListener('DOMContentLoaded', async function() {
-        // La liste des adresses est passée par le serveur Python
         const tokensToAnalyze = {{ tokens|tojson|safe }};
 
-        // --- Fonctions de formatage ---
-        const formatPrice = (value) => `$${Number(value).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 10})}`;
-        const formatMarketCap = (value) => {
-            if (value > 1e9) return `$${(value / 1e9).toFixed(2)}B`;
-            if (value > 1e6) return `$${(value / 1e6).toFixed(2)}M`;
-            if (value > 1e3) return `$${(value / 1e3).toFixed(2)}K`;
-            return `$${Math.round(value)}`;
-        };
-        
-        // --- Fonctions d'appel API depuis le navigateur ---
-        async function getDexScreenerData(tokenAddress) {
-            const response = await fetch(`https://api.dexscreener.com/latest/dex/search?q=${tokenAddress}`);
-            if (!response.ok) throw new Error('API DexScreener indisponible');
-            const data = await response.json();
-            if (!data.pairs || data.pairs.length === 0) throw new Error('Token non trouvé sur DexScreener');
-            return data.pairs[0];
-        }
-
-        // --- Fonction principale qui met à jour UNE carte ---
         async function processToken(tokenAddress, cardIndex) {
             const card = document.getElementById(`card-${cardIndex}`);
             const loader = card.querySelector('.loader');
-            
+            const wrapper = card.querySelector('.content-wrapper');
+
             try {
-                const pairData = await getDexScreenerData(tokenAddress);
+                // --- Étape 1: Le navigateur récupère les données publiques ---
+                const dexResponse = await fetch(`https://api.dexscreener.com/latest/dex/search?q=${tokenAddress}`);
+                if (!dexResponse.ok) throw new Error('API DexScreener indisponible');
+                const dexData = await dexResponse.json();
+                if (!dexData.pairs || dexData.pairs.length === 0) throw new Error('Token non trouvé sur DexScreener');
+                const pairData = dexData.pairs[0];
+
+                loader.textContent = 'Étape 2/2 : Analyse par l\'IA...';
+
+                // --- Étape 2: On envoie les données à notre serveur pour l'analyse IA ---
+                const analysisResponse = await fetch(`/api/get_final_analysis`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ dex_data: pairData, token_address: tokenAddress })
+                });
+                if (!analysisResponse.ok) throw new Error('Le serveur d\'analyse a échoué');
+                const analysisData = await analysisResponse.json();
                 
-                // Le reste des données n'est pas nécessaire pour ce test simple
-                const htmlContent = `
+                // --- Étape 3: On affiche tous les résultats ---
+                card.querySelector('.card-header h2').textContent = pairData.baseToken.name;
+                card.querySelector('.card-header .symbol').textContent = `$${pairData.baseToken.symbol}`;
+                
+                const scoreColor = analysisData.total_score < 40 ? 'var(--score-bad)' : (analysisData.total_score < 70 ? 'var(--score-medium)' : 'var(--score-good)');
+
+                wrapper.innerHTML = `
                     <div class="main-content">
                         <div class="left-panel">
-                            <div class="stat-box"><strong>Prix Actuel</strong><p>${formatPrice(pairData.priceUsd)}</p></div>
-                            <div class="stat-box"><strong>Market Cap</strong><p>${formatMarketCap(pairData.fdv)}</p></div>
-                             <div class="tools-box">
+                            <div class="stat-box"><strong>Prix Actuel</strong><p>${(pairData.priceUsd)}</p></div>
+                            <div class="stat-box"><strong>Market Cap</strong><p>${(pairData.fdv)}</p></div>
+                            <div class="tools-box">
                                 <strong>Outils</strong>
                                 <div class="tools-buttons">
-                                     <a href="https://axiom.trade/t/${pairData.baseToken.address}/@math96826" target="_blank" class="btn btn-axiom-specific">Trader ce Token</a>
-                                     <a href="https://solscan.io/token/${pairData.baseToken.address}" target="_blank" class="btn btn-solscan">Voir sur Solscan</a>
+                                    <a href="https://axiom.trade/t/${pairData.baseToken.address}/@math96826" target="_blank" class="btn btn-axiom-specific">Trader ce Token</a>
+                                    <a href="https://solscan.io/token/${pairData.baseToken.address}" target="_blank" class="btn btn-solscan">Voir sur Solscan</a>
+                                    <a href="https://rugcheck.xyz/tokens/${pairData.baseToken.address}" target="_blank" class="btn btn-rugcheck">Rapport Sécurité</a>
                                 </div>
                             </div>
                         </div>
-                        <div class="right-panel" style="align-items: center; justify-content: center;">
-                             <div class="chart-container" style="width:100%; height: 400px;">
-                                <iframe src="https://dexscreener.com/solana/${pairData.pairAddress}?embed=1&theme=dark&info=0"></iframe>
+                        <div class="right-panel">
+                            <div class="score-card ai-verdict-card">
+                                <h3>Verdict de l'IA</h3>
+                                <p class="score-value verdict-${analysisData.ai_analysis.final_verdict}">${analysisData.ai_analysis.final_verdict}</p>
+                                <p><strong>Probabilité de hausse : ${analysisData.ai_analysis.probability}%</strong></p>
+                                <p class="ai-summary">"${analysisData.ai_analysis.summary}"</p>
+                            </div>
+                            <div class="score-card">
+                                <h3>Score Global</h3>
+                                <p class="score-value" style="color:${scoreColor};">${Math.round(analysisData.total_score)}/100</p>
                             </div>
                         </div>
                     </div>
                 `;
-
-                card.querySelector('.card-header h2').textContent = pairData.baseToken.name;
-                card.querySelector('.card-header .symbol').textContent = `$${pairData.baseToken.symbol}`;
-                const wrapper = card.querySelector('.content-wrapper');
-                wrapper.innerHTML = htmlContent;
+                
                 wrapper.style.display = 'block';
                 loader.style.display = 'none';
-                card.style.opacity = 1;
 
             } catch (error) {
                 console.error("Erreur de traitement:", error);
                 loader.innerHTML = `<div class="error">Erreur : ${error.message}</div>`;
-                card.style.opacity = 1;
             }
         }
 
-        // Lance une analyse pour chaque token demandé
         tokensToAnalyze.forEach((token, index) => {
             processToken(token, index);
         });

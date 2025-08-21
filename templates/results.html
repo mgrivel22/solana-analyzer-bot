@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Résultats d'Analyse</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #121212; color: #e0e0e0; margin: 0; padding: 2rem; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { color: #14f195; text-align: center; }
+        
+        /* Navigation en haut de page */
+        .top-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 1rem 0 2rem;
+        }
+        .nav-link { color: #14f195; text-decoration: none; font-size: 1.1rem; }
+        .btn-main-trade {
+            padding: 10px 20px;
+            background-color: #8A2BE2; /* Violet Axiom */
+            color: white;
+            font-weight: bold;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: transform 0.2s ease, background-color 0.2s ease;
+        }
+        .btn-main-trade:hover {
+            background-color: #7b24cb;
+            transform: scale(1.05);
+        }
+
+        .results-grid { display: grid; grid-template-columns: 1fr; gap: 2.5rem; }
+        .result-card { background-color: #1e1e1e; padding: 1.5rem 2rem; border-radius: 12px; }
+        .card-header { margin-bottom: 1.5rem; border-bottom: 1px solid #333; padding-bottom: 1rem; }
+        .card-header h2 { margin: 0; font-size: 1.8rem; display: inline-block; }
+        .card-header .symbol { font-size: 1.2rem; color: #888; margin-left: 10px; }
+        .error { color: #dc3545; font-weight: bold; }
+        .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .stat-box, .analysis-box, .tools-box { background-color: #2a2a2a; padding: 1rem; border-radius: 8px; }
+        .stat-box strong, .tools-box strong { color: #888; display: block; font-size: 0.9em; margin-bottom: 5px; text-transform: uppercase; }
+        .stat-box p { margin: 0; font-size: 1.8rem; color: #fff; min-height: 29px; }
+        .analysis-box h3 { margin-top: 0; font-size: 1.2rem; }
+        .analysis-box ul { padding-left: 20px; margin: 10px 0 0; color: #ccc; font-size: 0.9em;}
+        .signal.buy { color: #28a745; } .signal.hold { color: #ffc107; } .signal.wait { color: #dc3545; }
+        .tools-buttons { display: flex; flex-direction: column; gap: 10px; margin-top: 1rem; }
+        .btn { display: block; color: white; text-align: center; padding: 10px; border-radius: 8px; text-decoration: none; font-weight: bold; transition: opacity 0.2s; }
+        .btn:hover { opacity: 0.8; }
+        .btn-axiom-specific { background-color: #8A2BE2; }
+        .btn-solscan { background-color: #1a5c8b; }
+        .btn-rugcheck { background-color: #c79500; }
+        .chart-container { height: 550px; }
+        iframe { border: none; width: 100%; height: 100%; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📈 Résultats d'Analyse</h1>
+        
+        <div class="top-nav">
+            <a href="/" class="nav-link">← Nouvelle Analyse</a>
+            <a href="https://axiom.trade/@math96826" target="_blank" class="btn-main-trade">TRADER AVEC AXIOM</a>
+        </div>
+
+        <div class="results-grid">
+            {% for result in results %}
+            <div class="result-card">
+                {% if result.error %}
+                    <div class="card-header"><h2>Adresse Invalide</h2></div>
+                    <p class="error">Erreur : {{ result.error }}</p>
+                {% else %}
+                    <div class="card-header">
+                        <h2>{{ result.token_name }}</h2>
+                        <span class="symbol">${{ result.token_symbol }}</span>
+                    </div>
+                    <div class="info-grid">
+                        <div class="stat-box">
+                            <strong>Prix Actuel (USD)</strong>
+                            <p id="price-{{ loop.index }}">{{ result.current_price|format_price }}</p>
+                        </div>
+                        <div class="stat-box">
+                            <strong>Market Cap (FDV)</strong>
+                            <p id="mc-{{ loop.index }}">{{ result.market_cap|format_market_cap }}</p>
+                        </div>
+                        <div class="analysis-box">
+                            <h3 class="signal {{ result.signal_key }}">{{ result.signal }}</h3>
+                            <ul>
+                                {% for reason in result.reasons %}
+                                <li>{{ reason }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        <div class="tools-box">
+                            <strong>Outils d'Analyse</strong>
+                            <div class="tools-buttons">
+                                <a href="https://axiom.trade/t/{{ result.token }}/@math96826" target="_blank" class="btn btn-axiom-specific">Trader ce Token</a>
+                                <a href="https://solscan.io/token/{{ result.token }}" target="_blank" class="btn btn-solscan">Explorer sur Solscan</a>
+                                <a href="https://rugcheck.xyz/tokens/{{ result.token }}" target="_blank" class="btn btn-rugcheck">Analyser sur RugCheck</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <iframe src="https://dexscreener.com/solana/{{ result.pair_address }}?embed=1&theme=dark&info=0"></iframe>
+                    </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script>
+        const formatPrice = (value) => {
+            if (value < 0.000001) return `$${value.toFixed(10)}`;
+            return `$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })}`;
+        };
+        const formatMarketCap = (value) => {
+            if (value > 1_000_000_000) return `$${(value / 1_000_000_000).toFixed(2)}B`;
+            if (value > 1_000_000) return `$${(value / 1_000_000).toFixed(2)}M`;
+            if (value > 1_000) return `$${(value / 1_000).toFixed(2)}K`;
+            return `$${Math.round(value)}`;
+        };
+        async function updateTokenData() {
+            const results = {{ results|tojson|safe }};
+            // On utilise une boucle javascript standard avec "i" comme index
+            for (let i = 0; i < results.length; i++) {
+                const result = results[i];
+                if (!result.error) {
+                    try {
+                        const response = await fetch(`https://api.dexscreener.com/latest/dex/pairs/solana/${result.pair_address}`);
+                        const data = await response.json();
+                        if (data.pair) {
+                            // On utilise l'index javascript 'i + 1' qui correspondra au 'loop.index' de Jinja
+                            const priceElement = document.getElementById(`price-${i + 1}`);
+                            const mcElement = document.getElementById(`mc-${i + 1}`);
+                            
+                            const newPrice = parseFloat(data.pair.priceUsd);
+                            const newMc = parseFloat(data.pair.fdv);
+
+                            if(priceElement) priceElement.textContent = formatPrice(newPrice);
+                            if(mcElement) mcElement.textContent = formatMarketCap(newMc);
+                        }
+                    } catch (error) {
+                        console.error("Erreur de mise à jour pour", result.token_name, error);
+                    }
+                }
+            }
+        }
+        setInterval(updateTokenData, 5000);
+    </script>
+</body>
+</html>

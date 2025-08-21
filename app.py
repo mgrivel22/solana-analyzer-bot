@@ -33,7 +33,6 @@ def get_final_analysis():
     if not model:
         return jsonify({"error": "IA non configurée sur le serveur."}), 500
 
-    # Récupération des données collectées par le navigateur
     dex_data = request.json.get('dex_data')
     token_address = request.json.get('token_address')
 
@@ -66,25 +65,25 @@ def get_final_analysis():
     if price_change.get('h6', 0) > 0 and price_change.get('m5', 0) > -20:
         scores['trend'] = 10
     
-    # --- Interrogation de l'IA Gemini ---
+    # --- Interrogation de l'IA Gemini avec toutes les données ---
     prompt = f"""
     En tant qu'expert en analyse de memecoins Solana, analyse les données suivantes pour le token "{dex_data['baseToken']['name']}" (${dex_data['baseToken']['symbol']}).
-    
-    Données Techniques:
-    - Market Cap: ${dex_data['fdv']:,.0f}
-    - Liquidité: ${dex_data['liquidity']['usd']:,.0f}
-    - Volume 24h: ${volume.get('h24', 0):,.0f}
-    - Variation prix 1h: {price_change.get('h1', 0)}%
-    - Ratio Acheteurs/Vendeurs (1h): {txns.get('buys', 0)} acheteurs / {txns.get('sells', 0)} vendeurs
-    - Risques de sécurité détectés: {'Oui' if scores['security'] < 40 else 'Non'}
 
-    Basé sur TOUTES ces données, fournis une analyse finale.
+    Données Techniques & Marché:
+    - Market Cap: ${dex_data.get('fdv', 0):,.0f}
+    - Liquidité: ${dex_data.get('liquidity', {}).get('usd', 0):,.0f}
+    - Volume 24h: ${volume.get('h24', 0):,.0f}
+    - Variation prix 1h/24h: {price_change.get('h1', 0)}% / {price_change.get('h24', 0)}%
+    - Ratio Acheteurs/Vendeurs (1h): {txns.get('buys', 0)} acheteurs / {txns.get('sells', 0)} vendeurs
+    - Score de sécurité (sur 40): {scores['security']}
+
+    En te basant sur TOUTES ces données, fournis une analyse finale experte.
     Réponds UNIQUEMENT avec un objet JSON au format suivant:
     {{
-      "hype_score": <un score de hype de 0 à 100 basé sur le nom, le volume et l'activité acheteuse>,
-      "final_verdict": "BUY, WAIT, ou HOLD",
+      "hype_score": <un score de 0 à 100 estimant le hype actuel, basé sur le nom, le volume et l'activité acheteuse>,
+      "final_verdict": "BUY NOW, POTENTIAL BUY, WAIT ou HIGH RISK",
       "probability": <une probabilité en % que le token performe bien à court terme (ex: 75)>,
-      "summary": "<un résumé d'une phrase expliquant ta décision>"
+      "summary": "<ton résumé personnalisé d'une phrase expliquant ta décision pour ce token spécifique>"
     }}
     """
     
@@ -95,16 +94,15 @@ def get_final_analysis():
     except Exception as e:
         logger.error(f"Erreur finale API Gemini: {e}")
         ai_data = {"final_verdict": "Erreur IA", "probability": 0, "summary": "L'analyse IA a échoué."}
+        scores['hype'] = 0
 
     total_score = sum(scores.values())
     
-    # On renvoie le tout au navigateur
     return jsonify({
         "total_score": total_score,
         "score_details": scores,
         "ai_analysis": ai_data
     })
-
 
 # --- Routes de base ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -116,7 +114,7 @@ def index(): return render_template("index.html")
 @app.route("/analyze", methods=["POST"])
 def analyze():
     raw_input = request.form["token"].strip()
-    tokens_to_analyze = [t.strip() for t in raw_input.split(",") if t.strip()][:1]
+    tokens_to_analyze = [t.strip() for t in raw_input.split(",") if t.strip()][:1] # Limite à 1 pour la démo
     return render_template("results.html", tokens=tokens_to_analyze)
 
 if __name__ == "__main__": app.run(debug=True)

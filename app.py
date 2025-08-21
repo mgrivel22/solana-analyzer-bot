@@ -69,19 +69,11 @@ def get_dexscreener_data(token_or_pair_address):
     try:
         url = f"https://api.dexscreener.com/latest/dex/search?q={token_or_pair_address}"
         
-        # ==============================================================================
-        # CORRECTION AJOUTÉE ICI
-        # ==============================================================================
+        # CORRECTION PERMANENTE POUR CONTOURNER LE BLOCAGE CLOUDFLARE
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
         }
         response = requests.get(url, headers=headers, timeout=15)
-        # ==============================================================================
-        
-        # On peut retirer les logs de debug maintenant
-        # logger.info(f"URL appelée : {url}")
-        # logger.info(f"Statut de la réponse : {response.status_code}")
-        # logger.info(f"Contenu de la réponse : {response.text}")
         
         response.raise_for_status()
         data = response.json()

@@ -5,9 +5,7 @@ import time
 
 app = Flask(__name__)
 
-# ==============================================================================
-# FILTRES DE FORMATAGE POUR LES NOMBRES
-# ==============================================================================
+# ... (Les filtres de formatage restent les mêmes) ...
 @app.template_filter()
 def format_price(value):
     if not isinstance(value, (int, float)): return "N/A"
@@ -22,22 +20,13 @@ def format_market_cap(value):
     if value > 1_000: return f"${value/1_000:.2f}K"
     return f"${int(value)}"
 
-# ==============================================================================
-# ANALYSE STRATÉGIQUE AVANCÉE
-# ==============================================================================
+# ... (L'analyse stratégique reste la même) ...
 def analyze_token_strategy(pair_data):
     reasons = []
-    
-    # --- 1. Détection des "Red Flags" (Veto) ---
     liquidity = pair_data.get("liquidity", {}).get("usd", 0)
-    if liquidity < 3000:
-        return "Risque Élevé", "wait", ["🚩 Liquidité critique (< 3k$)"]
-        
+    if liquidity < 3000: return "Risque Élevé", "wait", ["🚩 Liquidité critique (< 3k$)"]
     pair_created_at = pair_data.get("pairCreatedAt", 0) / 1000
-    if (time.time() - pair_created_at) < 3600:
-        reasons.append("⚠️ Token très récent (< 1h)")
-
-    # --- 2. Scoring basé sur plusieurs indicateurs ---
+    if (time.time() - pair_created_at) < 3600: reasons.append("⚠️ Token très récent (< 1h)")
     score = 0
     price_change = pair_data.get("priceChange", {})
     if price_change.get("h1", 0) > 15: score += 1; reasons.append("📈 Momentum 1h (> +15%)")
@@ -48,42 +37,33 @@ def analyze_token_strategy(pair_data):
     txns = pair_data.get("txns", {}).get("h1", {})
     buys = txns.get("buys", 0)
     sells = txns.get("sells", 0)
-    if buys > sells * 1.5:
-        score += 2; reasons.append("🔥 Forte pression acheteuse 1h")
-    elif buys > sells:
-        reasons.append("👍 Sentiment acheteur positif 1h")
+    if buys > sells * 1.5: score += 2; reasons.append("🔥 Forte pression acheteuse 1h")
+    elif buys > sells: reasons.append("👍 Sentiment acheteur positif 1h")
     fdv = pair_data.get("fdv", 0)
     if fdv < 250000 and fdv > 10000: score += 1; reasons.append("💎 Potentiel (MC < 250k$)")
-    
-    # --- 3. Traduction du score en signal ---
     if score >= 4: return "Signal d'Achat Fort", "buy", reasons
     elif score >= 2: return "Potentiel Intéressant", "hold", reasons
     elif score >= 0: return "Neutre / À Surveiller", "hold", reasons
     else: return "Prudence Requise", "wait", reasons
 
-# --- Le reste du code est principalement inchangé ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 def get_dexscreener_data(token_or_pair_address):
+    # MESSAGE DE TEST AJOUTÉ ICI
+    logger.info("--- Exécution de la fonction get_dexscreener_data VERSION 2 ---")
     try:
         url = f"https://api.dexscreener.com/latest/dex/search?q={token_or_pair_address}"
-        
-        # CORRECTION PERMANENTE POUR CONTOURNER LE BLOCAGE CLOUDFLARE
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 1.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
         }
         response = requests.get(url, headers=headers, timeout=15)
-        
         response.raise_for_status()
         data = response.json()
-        
         if data.get("pairs"):
             return data["pairs"][0]
         else:
-            logger.warning(f"Clé 'pairs' non trouvée ou vide dans la réponse pour {token_or_pair_address}")
             return None
-            
     except requests.exceptions.RequestException as e:
         logger.error(f"Erreur API DexScreener pour {token_or_pair_address}: {e}")
         return None
@@ -97,16 +77,12 @@ def analyze():
     raw_input = request.form["token"].strip()
     tokens_to_analyze = [t.strip() for t in raw_input.split(",") if t.strip()]
     results = []
-
     for address in tokens_to_analyze[:3]:
         pair_data = get_dexscreener_data(address)
-        
         if not pair_data:
             results.append({"token": address, "error": "Token non trouvé. Vérifiez l'adresse."})
             continue
-
         signal, signal_key, reasons = analyze_token_strategy(pair_data)
-
         results.append({
             "token": address,
             "token_name": pair_data.get("baseToken", {}).get("name"),
@@ -118,7 +94,6 @@ def analyze():
             "signal_key": signal_key,
             "reasons": reasons
         })
-        
     return render_template("results.html", results=results)
 
 if __name__ == "__main__":

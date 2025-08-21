@@ -5,38 +5,49 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Résultats d'Analyse</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #121212; color: #e0e0e0; margin: 0; padding: 2rem; }
+        :root { /* Couleurs */
+            --primary-color: #14f195; --background-color: #121212; --surface-color: #1e1e1e;
+            --text-color: #e0e0e0; --secondary-text-color: #888; --axiom-purple: #8A2BE2;
+            --score-bad: #dc3545; --score-medium: #ffc107; --score-good: #28a745;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--background-color); color: var(--text-color); margin: 0; padding: 2rem; }
         .container { max-width: 1200px; margin: 0 auto; }
-        h1 { color: #14f195; text-align: center; }
+        h1 { color: var(--primary-color); text-align: center; }
         .top-nav { display: flex; justify-content: space-between; align-items: center; margin: 1rem 0 2rem; }
-        .nav-link { color: #14f195; text-decoration: none; font-size: 1.1rem; }
-        .btn-main-trade { padding: 10px 20px; background-color: #8A2BE2; color: white; font-weight: bold; text-decoration: none; border-radius: 8px; transition: transform 0.2s ease, background-color 0.2s ease; }
+        .nav-link { color: var(--primary-color); text-decoration: none; font-size: 1.1rem; }
+        .btn-main-trade { padding: 10px 20px; background-color: var(--axiom-purple); color: white; font-weight: bold; text-decoration: none; border-radius: 8px; transition: all 0.2s; }
         .btn-main-trade:hover { background-color: #7b24cb; transform: scale(1.05); }
         .results-grid { display: grid; grid-template-columns: 1fr; gap: 2.5rem; }
-        .result-card { background-color: #1e1e1e; padding: 1.5rem 2rem; border-radius: 12px; opacity: 0.5; transition: opacity 0.5s; }
+        .result-card { background-color: var(--surface-color); padding: 1.5rem 2rem; border-radius: 12px; opacity: 0.5; transition: opacity 0.5s; }
         .card-header { margin-bottom: 1.5rem; border-bottom: 1px solid #333; padding-bottom: 1rem; min-height: 50px; }
         .card-header h2 { margin: 0; font-size: 1.8rem; display: inline-block; }
-        .card-header .symbol { font-size: 1.2rem; color: #888; margin-left: 10px; }
-        .error { color: #dc3545; font-weight: bold; }
-        .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
-        .stat-box, .analysis-box, .tools-box { background-color: #2a2a2a; padding: 1rem; border-radius: 8px; }
-        .stat-box strong, .tools-box strong { color: #888; display: block; font-size: 0.9em; margin-bottom: 5px; text-transform: uppercase; }
-        .stat-box p { margin: 0; font-size: 1.8rem; color: #fff; min-height: 29px; }
-        .analysis-box h3 { margin-top: 0; font-size: 1.2rem; }
-        .analysis-box ul { padding-left: 20px; margin: 10px 0 0; color: #ccc; font-size: 0.9em;}
-        .signal.buy { color: #28a745; } .signal.hold { color: #ffc107; } .signal.wait { color: #dc3545; }
+        .card-header .symbol { font-size: 1.2rem; color: var(--secondary-text-color); margin-left: 10px; }
+        .error { color: var(--score-bad); font-weight: bold; }
+        .main-content { display: grid; grid-template-columns: 1fr 2fr; gap: 2rem; }
+        .left-panel { display: flex; flex-direction: column; gap: 1.5rem; }
+        .stat-box, .tools-box { background-color: #2a2a2a; padding: 1rem; border-radius: 8px; }
+        .stat-box strong, .tools-box strong { color: var(--secondary-text-color); display: block; font-size: 0.9em; margin-bottom: 5px; text-transform: uppercase; }
+        .stat-box p { margin: 0; font-size: 1.5rem; color: #fff; }
         .tools-buttons { display: flex; flex-direction: column; gap: 10px; margin-top: 1rem; }
         .btn { display: block; color: white; text-align: center; padding: 10px; border-radius: 8px; text-decoration: none; font-weight: bold; transition: opacity 0.2s; }
         .btn:hover { opacity: 0.8; }
-        .btn-axiom-specific { background-color: #8A2BE2; } .btn-solscan { background-color: #1a5c8b; } .btn-rugcheck { background-color: #c79500; }
-        .chart-container { height: 550px; }
-        iframe { border: none; width: 100%; height: 100%; border-radius: 8px; }
+        .btn-axiom-specific { background-color: var(--axiom-purple); } .btn-solscan { background-color: #1a5c8b; } .btn-rugcheck { background-color: #c79500; }
+        .right-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+        .score-card { background-color: #2a2a2a; padding: 1.5rem; border-radius: 8px; text-align: center; }
+        .score-card h3 { margin-top: 0; font-size: 1.1rem; color: var(--secondary-text-color); }
+        .score-value { font-size: 3rem; font-weight: bold; margin: 0.5rem 0; }
+        .score-breakdown { font-size: 0.9em; }
+        .total-score-card { grid-column: 1 / -1; }
+        .total-score-value { font-size: 5rem; }
+        .ai-reason { font-style: italic; font-size: 0.8em; color: #aaa; margin-top: 5px; }
         .loader { text-align: center; padding: 2rem; font-size: 1.2rem; color: #888; }
+        @media (max-width: 900px) { .main-content { grid-template-columns: 1fr; } .right-panel { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 600px) { .right-panel { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📈 Résultats d'Analyse</h1>
+        <h1>📈 Résultats d'Analyse Approfondie</h1>
         <div class="top-nav">
             <a href="/" class="nav-link">← Nouvelle Analyse</a>
             <a href="https://axiom.trade/@math96826" target="_blank" class="btn-main-trade">TRADER AVEC AXIOM</a>
@@ -44,13 +55,9 @@
         <div class="results-grid">
             {% for token in tokens %}
             <div class="result-card" id="card-{{ loop.index0 }}">
-                <div class="card-header">
-                    <h2>Analyse en cours...</h2>
-                    <span class="symbol">{{ token[:6] }}...</span>
-                </div>
-                <div class="loader">Chargement des données...</div>
-                <div class="content-wrapper" style="display: none;">
-                    </div>
+                <div class="card-header"><h2>Analyse en cours...</h2><span class="symbol">{{ token[:6] }}...</span></div>
+                <div class="loader">Chargement des données depuis votre navigateur...</div>
+                <div class="content-wrapper" style="display: none;"></div>
             </div>
             {% endfor %}
         </div>
@@ -58,111 +65,67 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', async function() {
-        // La liste des tokens est passée directement par le serveur Python
+        // La liste des adresses est passée par le serveur Python
         const tokensToAnalyze = {{ tokens|tojson|safe }};
 
-        // --- Fonctions de formatage (inchangées) ---
-        const formatPrice = (value) => {
-            if (value < 0.000001) return `$${Number(value).toFixed(10)}`;
-            return `$${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })}`;
-        };
+        // --- Fonctions de formatage ---
+        const formatPrice = (value) => `$${Number(value).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 10})}`;
         const formatMarketCap = (value) => {
-            if (value > 1_000_000_000) return `$${(value / 1_000_000_000).toFixed(2)}B`;
-            if (value > 1_000_000) return `$${(value / 1_000_000).toFixed(2)}M`;
-            if (value > 1_000) return `$${(value / 1_000).toFixed(2)}K`;
+            if (value > 1e9) return `$${(value / 1e9).toFixed(2)}B`;
+            if (value > 1e6) return `$${(value / 1e6).toFixed(2)}M`;
+            if (value > 1e3) return `$${(value / 1e3).toFixed(2)}K`;
             return `$${Math.round(value)}`;
         };
-
-        // --- Logique d'analyse stratégique (traduite en JavaScript) ---
-        function analyzeTokenStrategy(pairData) {
-            let reasons = [];
-            const now = Date.now();
-            
-            const liquidity = pairData.liquidity?.usd || 0;
-            if (liquidity < 3000) {
-                return { signal: "Risque Élevé", signal_key: "wait", reasons: ["🚩 Liquidité critique (< 3k$)"] };
-            }
-            
-            const pairCreatedAt = pairData.pairCreatedAt || 0;
-            if ((now - pairCreatedAt) < 3600 * 1000) {
-                reasons.push("⚠️ Token très récent (< 1h)");
-            }
-
-            let score = 0;
-            const priceChange = pairData.priceChange || {};
-            if (priceChange.h1 > 15) { score++; reasons.push("📈 Momentum 1h (> +15%)"); }
-            if (priceChange.h24 > 0) { score++; reasons.push("✅ Tendance 24h positive"); }
-            if (priceChange.m5 < -10) { score--; reasons.push("📉 Dump récent 5min (< -10%)"); }
-            
-            const volume = pairData.volume || {};
-            if (volume.h24 > 50000) { score++; reasons.push("📊 Volume 24h significatif (> 50k$)"); }
-
-            const txns = pairData.txns?.h1 || {};
-            const buys = txns.buys || 0;
-            const sells = txns.sells || 0;
-            if (buys > sells * 1.5) { score += 2; reasons.push("🔥 Forte pression acheteuse 1h"); }
-            else if (buys > sells) { reasons.push("👍 Sentiment acheteur positif 1h"); }
-
-            const fdv = pairData.fdv || 0;
-            if (fdv < 250000 && fdv > 10000) { score++; reasons.push("💎 Potentiel (MC < 250k$)"); }
-
-            if (score >= 4) return { signal: "Signal d'Achat Fort", signal_key: "buy", reasons };
-            if (score >= 2) return { signal: "Potentiel Intéressant", signal_key: "hold", reasons };
-            if (score >= 0) return { signal: "Neutre / À Surveiller", signal_key: "hold", reasons };
-            return { signal: "Prudence Requise", signal_key: "wait", reasons };
+        
+        // --- Fonctions d'appel API depuis le navigateur ---
+        async function getDexScreenerData(tokenAddress) {
+            const response = await fetch(`https://api.dexscreener.com/latest/dex/search?q=${tokenAddress}`);
+            if (!response.ok) throw new Error('API DexScreener indisponible');
+            const data = await response.json();
+            if (!data.pairs || data.pairs.length === 0) throw new Error('Token non trouvé sur DexScreener');
+            return data.pairs[0];
         }
 
-        // --- Fonction principale qui appelle l'API et met à jour la page ---
-        async function fetchAndDisplayData(tokenAddress, cardIndex) {
+        // --- Fonction principale qui met à jour UNE carte ---
+        async function processToken(tokenAddress, cardIndex) {
             const card = document.getElementById(`card-${cardIndex}`);
             const loader = card.querySelector('.loader');
             
             try {
-                const response = await fetch(`https://api.dexscreener.com/latest/dex/search?q=${tokenAddress}`);
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                const data = await response.json();
-
-                if (!data.pairs || data.pairs.length === 0) {
-                    throw new Error("Token non trouvé.");
-                }
-
-                const pairData = data.pairs[0];
-                const analysis = analyzeTokenStrategy(pairData);
+                const pairData = await getDexScreenerData(tokenAddress);
                 
-                // Remplissage du contenu de la carte
-                card.querySelector('.card-header h2').textContent = pairData.baseToken.name;
-                card.querySelector('.card-header .symbol').textContent = `$${pairData.baseToken.symbol}`;
-                
-                const contentWrapper = `
-                    <div class="info-grid">
-                        <div class="stat-box"><strong>Prix Actuel (USD)</strong><p>${formatPrice(pairData.priceUsd)}</p></div>
-                        <div class="stat-box"><strong>Market Cap (FDV)</strong><p>${formatMarketCap(pairData.fdv)}</p></div>
-                        <div class="analysis-box">
-                            <h3 class="signal ${analysis.signal_key}">${analysis.signal}</h3>
-                            <ul>${analysis.reasons.map(r => `<li>${r}</li>`).join('')}</ul>
+                // Le reste des données n'est pas nécessaire pour ce test simple
+                const htmlContent = `
+                    <div class="main-content">
+                        <div class="left-panel">
+                            <div class="stat-box"><strong>Prix Actuel</strong><p>${formatPrice(pairData.priceUsd)}</p></div>
+                            <div class="stat-box"><strong>Market Cap</strong><p>${formatMarketCap(pairData.fdv)}</p></div>
+                             <div class="tools-box">
+                                <strong>Outils</strong>
+                                <div class="tools-buttons">
+                                     <a href="https://axiom.trade/t/${pairData.baseToken.address}/@math96826" target="_blank" class="btn btn-axiom-specific">Trader ce Token</a>
+                                     <a href="https://solscan.io/token/${pairData.baseToken.address}" target="_blank" class="btn btn-solscan">Voir sur Solscan</a>
+                                </div>
+                            </div>
                         </div>
-                        <div class="tools-box">
-                            <strong>Outils d'Analyse</strong>
-                            <div class="tools-buttons">
-                                <a href="https://axiom.trade/t/${pairData.baseToken.address}/@math96826" target="_blank" class="btn btn-axiom-specific">Trader ce Token</a>
-                                <a href="https://solscan.io/token/${pairData.baseToken.address}" target="_blank" class="btn btn-solscan">Explorer sur Solscan</a>
-                                <a href="https://rugcheck.xyz/tokens/${pairData.baseToken.address}" target="_blank" class="btn btn-rugcheck">Analyser sur RugCheck</a>
+                        <div class="right-panel" style="align-items: center; justify-content: center;">
+                             <div class="chart-container" style="width:100%; height: 400px;">
+                                <iframe src="https://dexscreener.com/solana/${pairData.pairAddress}?embed=1&theme=dark&info=0"></iframe>
                             </div>
                         </div>
                     </div>
-                    <div class="chart-container">
-                        <iframe src="https://dexscreener.com/solana/${pairData.pairAddress}?embed=1&theme=dark&info=0"></iframe>
-                    </div>
                 `;
-                
+
+                card.querySelector('.card-header h2').textContent = pairData.baseToken.name;
+                card.querySelector('.card-header .symbol').textContent = `$${pairData.baseToken.symbol}`;
                 const wrapper = card.querySelector('.content-wrapper');
-                wrapper.innerHTML = contentWrapper;
+                wrapper.innerHTML = htmlContent;
                 wrapper.style.display = 'block';
                 loader.style.display = 'none';
                 card.style.opacity = 1;
 
             } catch (error) {
-                console.error("Erreur de fetch:", error);
+                console.error("Erreur de traitement:", error);
                 loader.innerHTML = `<div class="error">Erreur : ${error.message}</div>`;
                 card.style.opacity = 1;
             }
@@ -170,7 +133,7 @@
 
         // Lance une analyse pour chaque token demandé
         tokensToAnalyze.forEach((token, index) => {
-            fetchAndDisplayData(token, index);
+            processToken(token, index);
         });
     });
     </script>

@@ -26,7 +26,6 @@ def format_market_cap(value):
 # ANALYSE STRATÉGIQUE AVANCÉE
 # ==============================================================================
 def analyze_token_strategy(pair_data):
-    """Analyse stratégique basée sur les données temps réel de DexScreener."""
     reasons = []
     
     # --- 1. Détection des "Red Flags" (Veto) ---
@@ -34,47 +33,33 @@ def analyze_token_strategy(pair_data):
     if liquidity < 3000:
         return "Risque Élevé", "wait", ["🚩 Liquidité critique (< 3k$)"]
         
-    pair_created_at = pair_data.get("pairCreatedAt", 0) / 1000 # Conversion en secondes
-    if (time.time() - pair_created_at) < 3600: # Moins d'une heure
+    pair_created_at = pair_data.get("pairCreatedAt", 0) / 1000
+    if (time.time() - pair_created_at) < 3600:
         reasons.append("⚠️ Token très récent (< 1h)")
 
     # --- 2. Scoring basé sur plusieurs indicateurs ---
     score = 0
-    
-    # Indicateur de Momentum (court, moyen, long terme)
     price_change = pair_data.get("priceChange", {})
     if price_change.get("h1", 0) > 15: score += 1; reasons.append("📈 Momentum 1h (> +15%)")
     if price_change.get("h24", 0) > 0: score += 1; reasons.append("✅ Tendance 24h positive")
     if price_change.get("m5", 0) < -10: score -= 1; reasons.append("📉 Dump récent 5min (< -10%)")
-
-    # Indicateur de Volume (confirme l'intérêt)
     volume = pair_data.get("volume", {})
     if volume.get("h24", 0) > 50000: score += 1; reasons.append("📊 Volume 24h significatif (> 50k$)")
-    
-    # Indicateur de Sentiment (pression acheteuse)
     txns = pair_data.get("txns", {}).get("h1", {})
     buys = txns.get("buys", 0)
     sells = txns.get("sells", 0)
     if buys > sells * 1.5:
-        score += 2
-        reasons.append("🔥 Forte pression acheteuse 1h")
+        score += 2; reasons.append("🔥 Forte pression acheteuse 1h")
     elif buys > sells:
         reasons.append("👍 Sentiment acheteur positif 1h")
-
-    # Indicateur de Valorisation (potentiel)
     fdv = pair_data.get("fdv", 0)
     if fdv < 250000 and fdv > 10000: score += 1; reasons.append("💎 Potentiel (MC < 250k$)")
     
     # --- 3. Traduction du score en signal ---
-    if score >= 4:
-        return "Signal d'Achat Fort", "buy", reasons
-    elif score >= 2:
-        return "Potentiel Intéressant", "hold", reasons
-    elif score >= 0:
-        return "Neutre / À Surveiller", "hold", reasons
-    else:
-        return "Prudence Requise", "wait", reasons
-
+    if score >= 4: return "Signal d'Achat Fort", "buy", reasons
+    elif score >= 2: return "Potentiel Intéressant", "hold", reasons
+    elif score >= 0: return "Neutre / À Surveiller", "hold", reasons
+    else: return "Prudence Requise", "wait", reasons
 
 # --- Le reste du code est principalement inchangé ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -84,16 +69,22 @@ def get_dexscreener_data(token_or_pair_address):
     try:
         url = f"https://api.dexscreener.com/latest/dex/search?q={token_or_pair_address}"
         response = requests.get(url, timeout=15)
+        
+        # ==============================================================================
+        # LIGNES DE DEBUG AJOUTÉES ICI
+        # ==============================================================================
+        logger.info(f"URL appelée : {url}")
+        logger.info(f"Statut de la réponse : {response.status_code}")
+        logger.info(f"Contenu de la réponse : {response.text}")
+        # ==============================================================================
+        
         response.raise_for_status()
         data = response.json()
         
         if data.get("pairs"):
             return data["pairs"][0]
         else:
-            url_pair = f"https://api.dexscreener.com/latest/dex/pairs/solana/{token_or_pair_address}"
-            response_pair = requests.get(url_pair, timeout=15)
-            if response_pair.status_code == 200 and response_pair.json().get("pair"):
-                 return response_pair.json()["pair"]
+            logger.warning(f"Clé 'pairs' non trouvée ou vide dans la réponse pour {token_or_pair_address}")
             return None
             
     except requests.exceptions.RequestException as e:

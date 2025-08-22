@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tendances Solana</title>
+    <title>Top Movers Solana</title>
     <style>
-        :root {
+        :root { /* Couleurs */
             --primary-color: #14f195; --background-color: #121212; --surface-color: #1e1e1e;
             --text-color: #e0e0e0; --secondary-text-color: #888; --axiom-purple: #8A2BE2;
+            --gainer-color: #28a745;
         }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--background-color); color: var(--text-color); margin: 0; padding: 2rem; }
         .container { max-width: 900px; margin: 0 auto; }
@@ -27,17 +28,17 @@
         .trending-table tr:last-child td { border-bottom: none; }
         .trending-table tr:hover { background-color: #252525; }
         .token-info { display: flex; align-items: center; }
-        .token-info img { width: 32px; height: 32px; vertical-align: middle; margin-right: 10px; border-radius: 50%; }
+        .token-info img { width: 32px; height: 32px; vertical-align: middle; margin-right: 10px; border-radius: 50%; background-color: #333;}
         .token-name { font-weight: bold; }
-        .price-change { font-weight: bold; }
+        .price-change { font-weight: bold; color: var(--gainer-color); }
         .btn-axiom { background-color: var(--axiom-purple); color: white; padding: 8px 12px; border-radius: 6px; text-decoration: none; font-size: 0.9em; font-weight: bold; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="top-nav"><a href="/" class="nav-link">← Retour à l'Analyseur</a></div>
-        <h1>🔥 Top des Tokens Solana</h1>
-        
+        <h1>🚀 Top 10 des "Movers" sur Solana</h1>
+
         {% if error %}
             <p class="error">{{ error }}</p>
         {% elif market_stats %}
@@ -52,7 +53,7 @@
         {% endif %}
 
         {% if trending_data %}
-        <h2>Basé sur le volume des dernières 24 heures</h2>
+        <h2>Tokens avec la plus forte hausse de prix sur les dernières 24 heures.</h2>
         <table class="trending-table">
             <thead><tr><th>#</th><th>Token</th><th>Prix (USD)</th><th>Chg. 24h</th><th></th></tr></thead>
             <tbody>
@@ -61,21 +62,22 @@
                     <td>{{ loop.index }}</td>
                     <td>
                         <div class="token-info">
-                            <img src="{{ token.logoURI }}" alt="logo" onerror="this.style.display='none'">
-                            <span class="token-name">{{ token.symbol }}</span>
+                            <img src="{{ token.logo }}" alt="logo" onerror="this.style.display='none'">
+                            <div>
+                                <div class="token-name">{{ token.name }}</div>
+                                <div style="font-size: 0.8em; color: var(--secondary-text-color);">${{ token.symbol }}</div>
+                            </div>
                         </div>
                     </td>
-                    <td>{{ token.price|format_price }}</td>
-                    <td><span class="price-change" style="color: {{ '#28a745' if token.priceChange24hPercent > 0 else '#dc3545' }}">{{ "%.2f"|format(token.priceChange24hPercent) }}%</span></td>
-                    <td>
-                        <a href="https://axiom.trade/t/{{ token.address }}/@math96826" target="_blank" class="btn-axiom">Trader</a>
-                    </td>
+                    <td>{{ token.price_usd|format_price }}</td>
+                    <td><span class="price-change">+{{ "%.2f"|format(token.price_change_24h_percent|float) }}%</span></td>
+                    <td><a href="https://axiom.trade/t/{{ token.token_address }}/@math96826" target="_blank" class="btn-axiom">Trader</a></td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
         {% else %}
-        <p class="error">Aucun token en tendance trouvé pour le moment.</p>
+        <p class="error">Aucun token trouvé pour le moment. L'API est peut-être momentanément indisponible.</p>
         {% endif %}
     </div>
 </body>

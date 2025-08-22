@@ -10,10 +10,8 @@ app = Flask(__name__)
 
 # --- Configuration des API ---
 try:
-    # On lit les clés. Si elles manquent, une erreur claire sera affichée dans les logs.
     GEMINI_API_KEY = os.environ['GEMINI_API_KEY']
-    MORALIS_API_KEY = os.environ['MORALIS_API_KEY'] # On utilise bien la clé Moralis
-    
+    MORALIS_API_KEY = os.environ['MORALIS_API_KEY']
     genai.configure(api_key=GEMINI_API_KEY)
     model = genai.GenerativeModel('gemini-1.5-flash')
     print("INFO: Clés API Gemini et Moralis chargées avec succès.")
@@ -27,7 +25,6 @@ except KeyError as e:
 def format_price(value):
     if not isinstance(value, (int, float)): return "N/A"
     return f"${value:,.10f}".rstrip('0').rstrip('.')
-
 @app.template_filter()
 def format_market_cap(value):
     if not isinstance(value, (int, float)): return "N/A"
@@ -37,19 +34,16 @@ def format_market_cap(value):
     return f"${int(value)}"
 
 # --- Fonctions d'API et Scoring ---
-# NOTE: La fonction pour Birdeye a été supprimée, on utilise maintenant Dexscreener pour l'analyse individuelle
-# car leur API est plus simple pour un token unique et évite d'utiliser notre clé Moralis pour chaque analyse.
-def get_dexscreener_data(token_address):
+def get_moralis_token_data(token_address):
+    if not MORALIS_API_KEY: return None
     try:
-        url = f"https://api.dexscreener.com/latest/dex/search?q={token_address}"
-        # On utilise scraper de cloudscraper pour éviter les blocages
-        scraper = requests # Fallback simple, cloudscraper n'est plus une dépendance requise
-        response = scraper.get(url, timeout=15)
+        url = f"https://solana-gateway.moralis.io/api/v2/token/{token_address}/price"
+        headers = {"accept": "application/json", "X-API-Key": MORALIS_API_KEY}
+        response = requests.get(url, headers=headers, timeout=15)
         response.raise_for_status()
-        data = response.json()
-        return data["pairs"][0] if data.get("pairs") else None
+        return response.json()
     except Exception as e:
-        logger.error(f"Erreur API DexScreener: {e}"); return None
+        logger.error(f"Erreur API Moralis (token data): {e}"); return None
 
 def get_rugcheck_data(token_address):
     try:
@@ -59,7 +53,7 @@ def get_rugcheck_data(token_address):
     except Exception as e:
         logger.error(f"Erreur API RugCheck: {e}"); return None
 
-def get_final_analysis_and_score(dex_data, token_address):
+def get_final_analysis_and_score(token_data, token_address):
     scores = {"security": 0, "activity": 0, "hype": 0, "trend": 0}
     rugcheck_data = get_rugcheck_data(token_address)
     if rugcheck_data and rugcheck_data.get('risks'):
@@ -68,22 +62,17 @@ def get_final_analysis_and_score(dex_data, token_address):
             if risk['name'] in ['Mutable Metadata', 'Mint Authority Enabled', 'High Concentration of Holders']: sec_score -= 15
         scores['security'] = max(0, sec_score)
     
-    volume = dex_data.get('volume', {}).get('h24', 0)
-    txns = dex_data.get('txns', {}).get('h24', {})
-    act_score = 0
-    if volume > 50000: act_score += 15
-    if txns.get('buys', 0) > txns.get('sells', 0): act_score += 15
-    scores['activity'] = act_score
-
-    price_change = dex_data.get('priceChange', {}).get('h24', 0)
-    if price_change is not None and price_change > 0: scores['trend'] = 10
+    # Moralis ne fournit pas toutes les données (volume, txns) dans cet endpoint simple
+    # On simplifie donc cette partie en se basant sur le prix
+    price_change = token_data.get('usdPriceChange24hr', 0)
+    if price_change is not None:
+        if price_change > 0: scores['trend'] = 10
+        if price_change > 50: scores['activity'] = 15 # Grosse activité positive
     
-    ai_data = {"final_verdict": "Indisponible", "probability": 0, "summary": "L'analyse IA n'a pas pu être effectuée."}
+    ai_data = {"final_verdict": "Indisponible", "probability": 0, "summary": "L'analyse IA a échoué."}
     if model:
-        prompt = f"""Analyse les données pour le token "{dex_data.get('baseToken',{}).get('name')}" (${dex_data.get('baseToken',{}).get('symbol')}):
-        - Market Cap: ${dex_data.get('fdv', 0):,.0f} - Volume 24h: ${volume:,.0f}
-        - Variation prix 24h: {price_change}% - Score de sécurité (sur 40): {scores['security']}
-        Réponds UNIQUEMENT en JSON: {{"hype_score": <0-100>, "final_verdict": "BUY NOW, POTENTIAL BUY, WAIT ou HIGH RISK", "probability": <0-100>, "summary": "<1 phrase>"}}"""
+        prompt = f"""Analyse le token avec le prix de ${token_data.get('usdPrice', 0):.6f} et une variation de {price_change}% sur 24h. Son score de sécurité est de {scores['security']}/40.
+        Réponds UNIQUEMENT en JSON: {{"hype_score": <0-100>, "final_verdict": "BUY, WAIT, ou HIGH RISK", "probability": <0-100>, "summary": "<1 phrase>"}}"""
         try:
             response = model.generate_content(prompt)
             cleaned_text = response.text.strip().replace("```json", "").replace("```", "")
@@ -106,8 +95,7 @@ def index(): return render_template("index.html")
 def tendances():
     if not MORALIS_API_KEY:
         return render_template("tendances.html", error="La clé API Moralis n'est pas configurée sur le serveur.")
-    
-    trending_data, error, market_stats, market_health = [], None, {}, {"status": "Indisponible", "color": "gray"}
+    trending_data, error = [], None
     try:
         url = "https://solana-gateway.moralis.io/api/v2/market-data/spl/top-movers"
         headers = {"accept": "application/json", "X-API-Key": MORALIS_API_KEY}
@@ -115,33 +103,25 @@ def tendances():
         response.raise_for_status()
         data = response.json()
         trending_data = data.get('top_gainers', [])[:10]
-        
-        if trending_data:
-            price_changes = [float(t.get('price_change_24h_percent', 0)) for t in trending_data if t.get('price_change_24h_percent') is not None]
-            avg_change = sum(price_changes) / len(price_changes) if price_changes else 0
-            if avg_change > 50: market_health = {"status": "🔥 Marché en Feu", "color": "#28a745"}
-            elif avg_change > 10: market_health = {"status": "🟢 Marché Haussier", "color": "#8BC34A"}
-            else: market_health = {"status": "🟡 Marché Neutre", "color": "#ffc107"}
     except Exception as e:
         logger.error(f"Erreur récupération tendances Moralis: {e}")
         error = "Impossible de charger les données des tendances."
-    return render_template("tendances.html", trending_data=trending_data, market_health=market_health, error=error)
+    return render_template("tendances.html", trending_data=trending_data, error=error)
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
     token_address = request.form["token"].strip()
     results = []
-    dex_data = get_dexscreener_data(token_address)
-    if not dex_data:
-        results.append({"token": token_address, "error": "Token non trouvé. Vérifiez l'adresse."})
+    token_data = get_moralis_token_data(token_address)
+    if not token_data:
+        results.append({"token": token_address, "error": "Token non trouvé via Moralis."})
     else:
-        total_score, score_details, ai_data = get_final_analysis_and_score(dex_data, token_address)
+        total_score, score_details, ai_data = get_final_analysis_and_score(token_data, token_address)
         results.append({
-            "token": token_address, "token_name": dex_data.get("baseToken",{}).get("name"), 
-            "token_symbol": dex_data.get("baseToken",{}).get("symbol"),
-            "current_price": float(dex_data.get("priceUsd", 0)), "market_cap": float(dex_data.get("fdv", 0)),
-            "pair_address": dex_data.get("pairAddress"), "total_score": total_score, 
-            "score_details": score_details, "ai_analysis": ai_data
+            "token": token_address, "token_name": token_data.get("tokenName", "N/A"), "token_symbol": token_data.get("tokenSymbol", "N/A"),
+            "current_price": float(token_data.get("usdPrice", 0)), "market_cap": 0, # L'endpoint prix simple ne donne pas le MC
+            "total_score": total_score, "score_details": score_details, "ai_analysis": ai_data,
+            "pair_address": None # Pas de paire directe depuis cet endpoint
         })
     return render_template("results.html", results=results)
 

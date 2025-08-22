@@ -47,7 +47,7 @@
         <h1>Analyse IA & Scoring Avancé</h1>
         <div class="top-nav">
             <a href="/" class="nav-link">← Nouvelle Analyse</a>
-            <a href="/tendances" class="nav-link">Tendances 🔥</a>
+            <a href="/tendances" class="nav-link">Top Movers 🔥</a>
             <a href="https://axiom.trade/@math96826" target="_blank" class="btn-main-trade">TRADER AVEC AXIOM</a>
         </div>
         {% for result in results %}
@@ -88,6 +88,8 @@
                 <div class="chart-container">
                     <iframe src="https://dexscreener.com/solana/{{ result.pair_address }}?embed=1&theme=dark&info=0"></iframe>
                 </div>
+                {% else %}
+                <div style="text-align:center; margin-top:2rem; color: var(--secondary-text-color);">Graphique non disponible pour ce token.</div>
                 {% endif %}
             {% endif %}
         </div>

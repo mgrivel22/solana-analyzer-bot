@@ -40,7 +40,7 @@
 <body>
     <div class="container">
         <div class="top-nav"><a href="/" class="nav-link">← Retour à l'Analyseur</a></div>
-        <h1>🔥 Tendances du Marché Solana</h1>
+        <h1>🔥 Top des Tokens Solana</h1>
         
         {% if error %}
             <p class="error">{{ error }}</p>
@@ -49,29 +49,31 @@
             <h2>Indicateur de Marché (Top 15 / 24h)</h2>
             <div class="market-health-status" style="background-color: {{ market_health.color }}20; color: {{ market_health.color }};">{{ market_health.status }}</div>
             <div class="market-stats">
-                <div class="stat"><strong>Volume Total</strong> {{ market_stats.volume|format_market_cap }}</div>
+                <div class="stat"><strong>Volume Total (Top 15)</strong> {{ market_stats.volume|format_market_cap }}</div>
                 <div class="stat"><strong>Tendance Moyenne</strong> <span style="color: {{ '#28a745' if market_stats.avg_change > 0 else '#dc3545' }}">{{ "%.2f"|format(market_stats.avg_change) }}%</span></div>
             </div>
         </div>
         {% endif %}
 
         {% if trending_data %}
-        <h2>Top 15 des Tokens les Plus Actifs (30 min)</h2>
+        <h2>Basé sur le volume des dernières 24 heures</h2>
         <table class="trending-table">
             <thead><tr><th>#</th><th>Token</th><th>Prix (USD)</th><th>Chg. 24h</th><th></th></tr></thead>
             <tbody>
-                {% for pair in trending_data %}
+                {% for token in trending_data %}
                 <tr>
                     <td>{{ loop.index }}</td>
                     <td>
                         <div class="token-info">
-                            <img src="{{ pair.token.logoURI }}" alt="logo" onerror="this.style.display='none'">
-                            <span class="token-name">{{ pair.token.symbol }}</span>
+                            <img src="{{ token.logoURI }}" alt="logo" onerror="this.style.display='none'">
+                            <span class="token-name">{{ token.symbol }}</span>
                         </div>
                     </td>
-                    <td>{{ pair.priceUsd|format_price }}</td>
-                    <td><span class="price-change" style="color: {{ '#28a745' if pair.priceChange.h24 > 0 else '#dc3545' }}">{{ "%.2f"|format(pair.priceChange.h24) }}%</span></td>
-                    <td><a href="https://axiom.trade/t/{{ pair.token.address }}/@math96826" target="_blank" class="btn-axiom">Trader</a></td>
+                    <td>{{ token.price|format_price }}</td>
+                    <td><span class="price-change" style="color: {{ '#28a745' if token.priceChange24hPercent > 0 else '#dc3545' }}">{{ "%.2f"|format(token.priceChange24hPercent) }}%</span></td>
+                    <td>
+                        <a href="https://axiom.trade/t/{{ token.address }}/@math96826" target="_blank" class="btn-axiom">Trader</a>
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>

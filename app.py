@@ -1,80 +1,77 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, redirect, url_for
 import logging
 import os
 import json
 import requests
-import google.generativeai as genai
 from typing import Dict, Any, Optional, List
 
+# --- Initialisation de Flask ---
 app = Flask(__name__)
 
 # --- Configuration ---
-app.config['GEMINI_API_KEY'] = os.environ.get('GEMINI_API_KEY')
+# Assurez-vous que ces variables sont bien configurées sur Render !
 app.config['BIRDEYE_API_KEY'] = os.environ.get('BIRDEYE_API_KEY')
+app.config['GEMINI_API_KEY'] = os.environ.get('GEMINI_API_KEY')
 
 # --- Initialisation de l'API Gemini ---
-try:
-    genai.configure(api_key=app.config['GEMINI_API_KEY'])
-    model = genai.GenerativeModel('gemini-1.5-flash')
-    logging.info("INFO: API Gemini configurée avec succès")
-except Exception as e:
-    logging.error(f"ERREUR: La configuration de l'API Gemini a échoué - {e}")
-    model = None
+model = None
+if app.config['GEMINI_API_KEY']:
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=app.config['GEMINI_API_KEY'])
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        logging.info("INFO: API Gemini configurée avec succès")
+    except Exception as e:
+        logging.error(f"ERREUR: La configuration de l'API Gemini a échoué - {e}")
 
 # --- Configuration du Logging ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # --- Filtres Jinja2 pour le Template ---
 @app.template_filter()
-def format_price(value: float) -> str:
+def format_pnl(value: float) -> str:
     try:
         value = float(value)
-        if value < 0.00001:
-            return f"${value:,.10f}".rstrip('0').rstrip('.')
-        return f"${value:,.6f}".rstrip('0').rstrip('.')
-    except (ValueError, TypeError):
-        return "N/A"
-
-@app.template_filter()
-def format_market_cap(value: float) -> str:
-    try:
-        value = float(value)
-        if not value or value == 0:
-            return "N/A"
-        if value >= 1_000_000_000:
-            return f"${value/1_000_000_000:.2f}B"
-        elif value >= 1_000_000:
-            return f"${value/1_000_000:.2f}M"
-        elif value >= 1_000:
-            return f"${value/1_000:.2f}K"
-        return f"${value:,.2f}"
+        sign = "+" if value > 0 else ""
+        return f"{sign}${value:,.2f}"
     except (ValueError, TypeError):
         return "N/A"
 
 # --- Services ---
 class BirdeyeService:
-    BASE_URL = "https://public-api.birdeye.so"
-    # MISE À JOUR : Ajout de l'en-tête 'x-chain' pour spécifier Solana
+    BASE_URL_V1 = "https://public-api.birdeye.so"
     HEADERS = {
         "X-API-KEY": app.config['BIRDEYE_API_KEY'],
         "x-chain": "solana"
     }
 
     @staticmethod
-    def get_token_overview(token_address: str) -> Optional[Dict[str, Any]]:
-        url = f"{BirdeyeService.BASE_URL}/defi/token_overview?address={token_address}"
+    def get_wallet_transactions(wallet_address: str) -> tuple[List[Dict[str, Any]], Optional[str]]:
+        url = f"{BirdeyeService.BASE_URL_V1}/defi/tx_list?address={wallet_address}&tx_type=all&limit=25&offset=0"
         try:
             response = requests.get(url, headers=BirdeyeService.HEADERS)
-            response.raise_for_status() # Lève une exception pour les erreurs HTTP (comme 401)
+            response.raise_for_status()
             data = response.json()
-            return data.get('data') if data.get('success') else None
+            return (data.get('data', {}).get('items', []), None) if data.get('success') else ([], "Réponse invalide de l'API")
         except requests.exceptions.RequestException as e:
-            logging.error(f"Erreur API Birdeye (get_token_overview): {e}")
-            return None
+            logging.error(f"Erreur API Birdeye (get_wallet_transactions): {e}")
+            return [], str(e)
+
+    @staticmethod
+    def get_gainers_losers() -> tuple[Dict[str, Any], Optional[str]]:
+        url = f"{BirdeyeService.BASE_URL_V1}/defi/gainers-losers?sort_by=gain_percent&sort_type=desc&limit=10"
+        try:
+            response = requests.get(url, headers=BirdeyeService.HEADERS)
+            response.raise_for_status()
+            data = response.json()
+            return (data.get('data', {}), None) if data.get('success') else ({}, "Réponse invalide de l'API")
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Erreur API Birdeye (get_gainers_losers): {e}")
+            return {}, str(e)
 
     @staticmethod
     def get_trending_tokens() -> tuple[List[Dict[str, Any]], Optional[str]]:
-        url = f"{BirdeyeService.BASE_URL}/defi/tokenlist?sort_by=v24hUSD&sort_type=desc&limit=50"
+        url = f"{BirdeyeService.BASE_URL_V1}/defi/tokenlist?sort_by=v24hUSD&sort_type=desc&limit=50"
         try:
             response = requests.get(url, headers=BirdeyeService.HEADERS)
             response.raise_for_status()
@@ -86,21 +83,31 @@ class BirdeyeService:
 
 class AIService:
     @staticmethod
-    def analyze_token(token_data: Dict[str, Any]) -> Dict[str, Any]:
+    def analyze_wallet(transactions: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
         if not model:
-            return {"error": "Modèle IA non initialisé."}
+            logging.error("Modèle IA non disponible pour l'analyse.")
+            return None
+        
+        # Simplifier les données pour le prompt
+        simplified_txs = json.dumps([{
+            "type": tx.get("txType"),
+            "token": tx.get("symbol"),
+            "amount_usd": tx.get("amountUsd")
+        } for tx in transactions])
+
         prompt = f"""
-        Analyse ce token Solana avec les données suivantes :
-        - Nom: {token_data.get('name', 'N/A')} - Symbole: {token_data.get('symbol', 'N/A')}
-        - Prix (USD): {token_data.get('price', 'N/A')} - Market Cap (USD): {token_data.get('mc', 'N/A')}
-        - Variation 24h (%): {token_data.get('priceChange24h', 0)}
-        Effectue une analyse de risque concise.
-        Retourne ta réponse UNIQUEMENT en format JSON valide, sans texte additionnel.
-        L'objet JSON doit contenir ces clés exactes :
-        - "total_score": Un score de confiance sur 100 (0=très risqué, 100=fiable).
-        - "final_verdict": Un verdict court parmi : "BUY NOW", "POTENTIAL BUY", "HOLD", "WAIT", "HIGH-RISK".
-        - "probability": La probabilité estimée (en entier) d'une tendance positive.
-        - "summary": Un résumé d'une phrase expliquant ton raisonnement.
+        Analyse la liste des 25 dernières transactions d'un wallet Solana : {simplified_txs}.
+        En te basant sur ces données limitées, agis comme un analyste crypto expert.
+
+        Calcule ou estime les métriques suivantes :
+        1.  "winrate": Le pourcentage de trades qui semblent profitables (considère un "swap" suivi d'un autre "swap" du même token comme un trade). Sois conservateur.
+        2.  "pnl_usd": Une estimation très approximative du Profit & Loss en USD sur ces trades.
+        3.  "top_tokens": Une liste des 3 tokens les plus fréquemment échangés.
+        4.  "behavior": Une brève description du comportement du trader (ex: "Scalper", "Swing Trader", "Degen").
+        5.  "copy_verdict": Un verdict clair sur la pertinence de copier ce trader, parmi : "Très Recommandé", "Potentiellement Rentable", "Prudence Requise", "Non Recommandé".
+        6.  "summary": Un résumé d'une phrase expliquant ton verdict.
+
+        Retourne ta réponse UNIQUEMENT en format JSON valide, sans texte additionnel ni markdown.
         """
         try:
             response = model.generate_content(prompt)
@@ -108,7 +115,7 @@ class AIService:
             return json.loads(cleaned_response)
         except Exception as e:
             logging.error(f"Erreur analyse Gemini: {e}")
-            return {"total_score": 0, "final_verdict": "ERROR", "probability": 0, "summary": "L'analyse par l'IA a échoué."}
+            return {"error": "L'analyse par l'IA a échoué.", "summary": str(e)}
 
 # --- Routes Flask ---
 @app.route("/")
@@ -117,34 +124,33 @@ def index():
 
 @app.route("/tendances")
 def tendances():
-    if not app.config['BIRDEYE_API_KEY']:
-        return render_template("tendances.html", error="Clé API Birdeye non configurée.")
     trending_data, error = BirdeyeService.get_trending_tokens()
-    transformed_data = [{
-        'logo': token.get('logoURI'), 'name': token.get('name'), 'symbol': token.get('symbol'),
-        'price_usd': token.get('price'), 'price_change_24h_percent': token.get('priceChange24h'),
-        'token_address': token.get('address'), 'market_cap': token.get('mc')
-    } for token in trending_data]
-    return render_template("tendances.html", trending_data=transformed_data, error=error)
+    return render_template("tendances.html", trending_data=trending_data, error=error)
 
-@app.route("/analyze", methods=["POST"])
-def analyze():
-    token_address = request.form.get("token", "").strip()
-    if not token_address:
-        return render_template("results.html", results=[{"error": "L'adresse du token est requise."}])
-    token_data = BirdeyeService.get_token_overview(token_address)
-    if not token_data:
-        return render_template("results.html", results=[{"error": "Token non trouvé ou erreur API Birdeye. Vérifiez que votre clé API est bien configurée."}])
-    result = {
-        "token": token_address, "token_name": token_data.get("name", "N/A"),
-        "token_symbol": token_data.get("symbol", "N/A"), "current_price": token_data.get("price"),
-        "price_change_percent": token_data.get("priceChange24h"), "market_cap": token_data.get("mc"),
-        "dexscreener_url": f"https://dexscreener.com/solana/{token_address}?embed=1&theme=dark&info=0"
-    }
-    ai_analysis = AIService.analyze_token(token_data)
-    result["ai_analysis"] = ai_analysis
-    result["total_score"] = ai_analysis.get("total_score", 0)
-    return render_template("results.html", results=[result])
+@app.route("/gainers-losers")
+def gainers_losers():
+    data, error = BirdeyeService.get_gainers_losers()
+    return render_template("gainers_losers.html", data=data, error=error)
+
+@app.route("/wallet-analyzer", methods=["GET", "POST"])
+def wallet_analyzer():
+    if request.method == "POST":
+        wallet_address = request.form.get("wallet", "").strip()
+        if not wallet_address:
+            return render_template("wallet_analyzer.html", error="L'adresse du wallet est requise.")
+        
+        transactions, error = BirdeyeService.get_wallet_transactions(wallet_address)
+        if error or not transactions:
+            return render_template("wallet_analyzer.html", error=f"Impossible de récupérer les transactions : {error or 'Aucune transaction trouvée.'}")
+
+        ai_analysis = AIService.analyze_wallet(transactions)
+        
+        return render_template("wallet_results.html", 
+                               analysis=ai_analysis, 
+                               wallet_address=wallet_address,
+                               transactions=transactions)
+    
+    return render_template("wallet_analyzer.html")
 
 # --- Gestionnaires d'Erreurs ---
 @app.errorhandler(404)

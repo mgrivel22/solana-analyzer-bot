@@ -3,52 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Solana Token Analyzer</title>
+    <title>Solana Analysis Hub</title>
     <style>
         :root {
             --primary-color: #14f195; --background-color: #0a0a0a; --surface-color: #1a1a1a;
             --text-color: #e0e0e0; --secondary-text-color: #888; --axiom-purple: #8A2BE2;
         }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--background-color); color: var(--text-color); margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 1rem; box-sizing: border-box; }
-        .container { width: 100%; max-width: 600px; margin: 0 auto; text-align: center; }
-        h1 { font-size: 2.5rem; font-weight: 800; margin-bottom: 0.5rem; background: linear-gradient(90deg, var(--primary-color), #4cffc1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .subtitle { font-size: 1.1rem; color: var(--secondary-text-color); margin-bottom: 2.5rem; }
-        .form-container { background-color: var(--surface-color); padding: 2.5rem; border-radius: 16px; border: 1px solid #2a2a2a; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); }
-        label { display: block; text-align: left; margin-bottom: 0.5rem; font-weight: 500; }
-        input[type="text"] { width: 100%; padding: 14px; margin-bottom: 1.5rem; background-color: #252525; border: 1px solid #444; border-radius: 8px; color: var(--text-color); font-size: 1rem; box-sizing: border-box; transition: border-color 0.3s, box-shadow 0.3s; }
-        input[type="text"]:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(20, 241, 149, 0.2); }
-        input[type="submit"] { background-color: var(--primary-color); color: #0a0a0a; padding: 14px 28px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1rem; width: 100%; transition: background-color 0.2s; }
-        .button-group { display: flex; gap: 1rem; margin-top: 2rem; }
-        .btn { display: inline-block; flex-grow: 1; padding: 12px 24px; font-size: 1rem; font-weight: bold; text-decoration: none; border-radius: 8px; transition: all 0.3s; }
-        .btn-axiom { background-color: var(--axiom-purple); color: white; }
-        .btn-axiom:hover { background-color: #7b24cb; }
-        .btn-trends { background-color: transparent; color: var(--primary-color); border: 2px solid var(--primary-color); }
-        .btn-trends:hover { background-color: var(--primary-color); color: var(--background-color); }
-        footer { margin-top: 3rem; font-size: 0.9em; color: var(--secondary-text-color); }
-        footer a { color: #aaa; text-decoration: none; }
-        footer a:hover { text-decoration: underline; }
-        @media (max-width: 600px) { body { padding: 0.5rem; align-items: flex-start; padding-top: 2rem; } .form-container { padding: 1.5rem; } h1 { font-size: 2rem; } .button-group { flex-direction: column; } }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--background-color); color: var(--text-color); margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 1rem; }
+        .container { text-align: center; }
+        h1 { font-size: 3rem; font-weight: 800; background: linear-gradient(90deg, var(--primary-color), #4cffc1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 1rem; }
+        .subtitle { font-size: 1.2rem; color: var(--secondary-text-color); margin-bottom: 3rem; max-width: 600px; margin-left:auto; margin-right:auto;}
+        .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; max-width: 1000px; margin: 0 auto; }
+        .feature-card { background-color: var(--surface-color); padding: 2rem; border-radius: 16px; border: 1px solid #2a2a2a; text-decoration: none; color: var(--text-color); transition: transform 0.3s, box-shadow 0.3s; }
+        .feature-card:hover { transform: translateY(-5px); box-shadow: 0 8px 32px rgba(20, 241, 149, 0.1); }
+        .feature-card h2 { font-size: 1.5rem; margin-top: 0; color: var(--primary-color); }
+        .feature-card p { color: var(--secondary-text-color); }
+        footer { margin-top: 4rem; font-size: 0.9em; color: var(--secondary-text-color); }
     </style>
 </head>
 <body>
     <div class="container">
-        <header><h1>🚀 Solana Analyzer V3 🚀</h1><p class="subtitle">Analyse IA & Scoring Avancé pour n'importe quel token Solana.</p></header>
+        <header>
+            <h1>🚀 Solana Analysis Hub</h1>
+            <p class="subtitle">Outils d'analyse on-chain pour trouver les meilleures opportunités sur Solana.</p>
+        </header>
         <main>
-            <div class="form-container">
-                <form action="/analyze" method="post">
-                    <label for="token">Adresse de contrat du token</label>
-                    <input type="text" id="token" name="token" required placeholder="Collez l'adresse du token ici...">
-                    <input type="submit" value="Analyser 🔥">
-                </form>
-            </div>
-            <div class="button-group">
-                <a href="/tendances" class="btn btn-trends">Voir les Top Movers 🔥</a>
-                <a href="https://axiom.trade/@math96826" target="_blank" class="btn btn-axiom">TRADER AVEC AXIOM</a>
+            <div class="features-grid">
+                <a href="/tendances" class="feature-card">
+                    <h2>🔥 Top 50 Movers</h2>
+                    <p>Découvrez les 50 tokens avec le plus grand volume de transactions sur les dernières 24 heures.</p>
+                </a>
+                <a href="/gainers-losers" class="feature-card">
+                    <h2>📈 Top Gainers & Losers</h2>
+                    <p>Visualisez les plus grosses performances et les plus grosses chutes du marché Solana.</p>
+                </a>
+                <a href="/wallet-analyzer" class="feature-card">
+                    <h2>🧠 Analyseur de Wallet IA</h2>
+                    <p>Analysez n'importe quel wallet Solana pour évaluer sa rentabilité et découvrir ses stratégies.</p>
+                </a>
             </div>
         </main>
         <footer>
-            <p>Données fournies par Birdeye, RugCheck & DexScreener. Les analyses ne sont pas des conseils financiers.</p>
-            <p>dev : <a href="https://www.instagram.com/mathieu_grv_/" target="_blank">mathieu_grv_</a></p>
+            <p>Données fournies par Birdeye. Les analyses ne sont pas des conseils financiers.</p>
         </footer>
     </div>
 </body>

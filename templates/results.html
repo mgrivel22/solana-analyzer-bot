@@ -33,7 +33,6 @@
         .ai-verdict-card .verdict { font-size: 2rem; font-weight: bold; text-transform: uppercase; }
         .verdict-BUY, .verdict-BUY-NOW, .verdict-POTENTIAL-BUY { color: var(--score-good); } .verdict-HOLD { color: var(--score-medium); } .verdict-WAIT, .verdict-HIGH-RISK, .verdict-ERROR { color: var(--score-bad); }
         .ai-summary { font-style: italic; font-size: 0.9em; color: #ccc; margin-top: 10px; }
-        /* Style pour le graphique DexScreener */
         .chart-container { margin-top: 2rem; }
         .chart-container h3 { text-align: center; color: var(--secondary-text-color); }
         .chart-container iframe { width: 100%; height: 450px; border-radius: 12px; border: 1px solid #333; }
@@ -59,7 +58,6 @@
                 </div>
                 <div class="main-content">
                     <div class="stat-box"><strong>Prix Actuel</strong><p>{{ result.current_price|format_price }}</p></div>
-                    <!-- NOUVEAU: Bloc pour le Market Cap -->
                     <div class="stat-box"><strong>Market Cap</strong><p>{{ result.market_cap|format_market_cap }}</p></div>
                     <div class="score-card">
                         <strong>Score IA</strong>
@@ -80,13 +78,10 @@
                         <p class="ai-summary">"{{ result.ai_analysis.summary }}"</p>
                     </div>
                 </div>
-                <!-- NOUVEAU: Section pour le graphique -->
-                {% if result.pair_address %}
                 <div class="chart-container">
                     <h3>Graphique de Prix (DexScreener)</h3>
                     <iframe src="{{ result.dexscreener_url }}"></iframe>
                 </div>
-                {% endif %}
             {% endif %}
         </div>
         {% endfor %}

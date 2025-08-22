@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Top Movers Solana</title>
     <style>
-        :root { /* Couleurs */
+        :root {
             --primary-color: #14f195; --background-color: #121212; --surface-color: #1e1e1e;
             --text-color: #e0e0e0; --secondary-text-color: #888; --axiom-purple: #8A2BE2;
             --gainer-color: #28a745; --loser-color: #dc3545;
@@ -16,7 +16,6 @@
         .top-nav { margin-bottom: 2rem; }
         .nav-link { color: var(--primary-color); text-decoration: none; font-size: 1.1rem; }
         .error { text-align: center; color: #ffc107; background-color: #2a2a2a; padding: 1rem; border-radius: 8px; }
-
         .trending-table { width: 100%; border-collapse: collapse; background-color: var(--surface-color); border-radius: 12px; overflow: hidden; border: 1px solid #2a2a2a; }
         .trending-table th, .trending-table td { padding: 1rem; text-align: left; border-bottom: 1px solid #2a2a2a; }
         .trending-table th { font-size: 0.9em; text-transform: uppercase; color: var(--secondary-text-color); }
@@ -46,7 +45,7 @@
                     <td>{{ loop.index }}</td>
                     <td>
                         <div class="token-info">
-                            <img src="{{ token.logo }}" alt="logo" onerror="this.style.display='none'">
+                            <img src="{{ token.logo }}" alt="logo" onerror="this.src='https://placehold.co/32x32/333/FFF?text=?'">
                             <div>
                                 <div class="token-name">{{ token.name }}</div>
                                 <div style="font-size: 0.8em; color: var(--secondary-text-color);">${{ token.symbol }}</div>
@@ -55,7 +54,7 @@
                     </td>
                     <td>{{ token.price_usd|format_price }}</td>
                     <td>
-                        {% set change = token.price_change_24h_percent|float %}
+                        {% set change = token.price_change_24h_percent|float(0) %}
                         <span class="price-change" style="color: {{ 'var(--gainer-color)' if change > 0 else 'var(--loser-color)' }}">
                             {{ "+" if change > 0 }}{{ "%.2f"|format(change) }}%
                         </span>

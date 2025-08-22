@@ -1,5 +1,4 @@
 flask
 gunicorn
 google-generativeai
-moralis
 requests

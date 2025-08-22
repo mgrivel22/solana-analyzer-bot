@@ -2,18 +2,17 @@ from flask import Flask, render_template, request
 import logging
 import os
 import json
-import requests # Ajout de requests pour les appels directs à l'API
+import requests
 import google.generativeai as genai
-from moralis import sol_api
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 app = Flask(__name__)
 
 # --- Configuration ---
 app.config['GEMINI_API_KEY'] = os.environ.get('GEMINI_API_KEY')
-app.config['MORALIS_API_KEY'] = os.environ.get('MORALIS_API_KEY')
+app.config['BIRDEYE_API_KEY'] = os.environ.get('BIRDEYE_API_KEY')
 
-# --- Initialisation des APIs ---
+# --- Initialisation de l'API Gemini ---
 try:
     genai.configure(api_key=app.config['GEMINI_API_KEY'])
     model = genai.GenerativeModel('gemini-1.5-flash')
@@ -30,7 +29,9 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 def format_price(value: float) -> str:
     try:
         value = float(value)
-        return f"${value:,.10f}".rstrip('0').rstrip('.')
+        if value < 0.00001:
+            return f"${value:,.10f}".rstrip('0').rstrip('.')
+        return f"${value:,.6f}".rstrip('0').rstrip('.')
     except (ValueError, TypeError):
         return "N/A"
 
@@ -49,47 +50,35 @@ def format_market_cap(value: float) -> str:
         return "N/A"
 
 # --- Services ---
-class MoralisService:
-    @staticmethod
-    def get_token_price_data(token_address: str) -> Optional[Dict[str, Any]]:
-        """Récupère les données de prix pour un token SPL."""
-        try:
-            params = {"network": "mainnet", "address": token_address}
-            return sol_api.token.get_token_price(api_key=app.config['MORALIS_API_KEY'], params=params)
-        except Exception as e:
-            logging.error(f"Erreur Moralis (get_token_price_data): {e}")
-            return None
+class BirdeyeService:
+    BASE_URL = "https://public-api.birdeye.so"
 
     @staticmethod
-    def get_token_metadata(token_address: str) -> Optional[Dict[str, Any]]:
-        """Récupère les métadonnées (supply, etc.) pour un token SPL."""
-        try:
-            params = {"network": "mainnet", "addresses": [token_address]}
-            metadata = sol_api.token.get_token_metadata(api_key=app.config['MORALIS_API_KEY'], params=params)
-            return metadata[0] if metadata else None
-        except Exception as e:
-            logging.error(f"Erreur Moralis (get_token_metadata): {e}")
-            return None
-
-    @staticmethod
-    def get_trending_tokens() -> tuple:
-        """
-        CORRECTION: Utilise un appel direct à l'API Moralis Deep Index
-        car la fonction n'est pas disponible dans le module sol_api du SDK.
-        """
-        url = "https://deep-index.moralis.io/api/v2.2/tokens/trending"
-        headers = {
-            "accept": "application/json",
-            "X-API-Key": app.config['MORALIS_API_KEY']
-        }
+    def get_token_overview(token_address: str) -> Optional[Dict[str, Any]]:
+        """Récupère les données complètes d'un token depuis Birdeye."""
+        url = f"{BirdeyeService.BASE_URL}/defi/token_overview?address={token_address}"
+        headers = {"X-API-KEY": app.config['BIRDEYE_API_KEY']}
         try:
             response = requests.get(url, headers=headers)
             response.raise_for_status()
-            # L'API renvoie un objet avec des clés pour chaque chaîne, nous voulons Solana.
-            solana_trending = response.json().get("solana", [])
-            return solana_trending[:10], None
+            data = response.json()
+            return data.get('data') if data.get('success') else None
         except requests.exceptions.RequestException as e:
-            logging.error(f"Erreur API Moralis (get_trending_tokens): {e}")
+            logging.error(f"Erreur API Birdeye (get_token_overview): {e}")
+            return None
+
+    @staticmethod
+    def get_trending_tokens() -> tuple[List[Dict[str, Any]], Optional[str]]:
+        """Récupère les tokens les plus échangés sur les dernières 24h."""
+        url = f"{BirdeyeService.BASE_URL}/defi/tokenlist?sort_by=v24hUSD&sort_type=desc"
+        headers = {"X-API-KEY": app.config['BIRDEYE_API_KEY']}
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            data = response.json()
+            return (data.get('data', {}).get('tokens', [])[:10], None) if data.get('success') else ([], "Réponse invalide de l'API")
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Erreur API Birdeye (get_trending_tokens): {e}")
             return [], str(e)
 
 class AIService:
@@ -101,11 +90,11 @@ class AIService:
 
         prompt = f"""
         Analyse ce token Solana avec les données suivantes :
-        - Nom: {token_data.get('token_name', 'N/A')}
-        - Symbole: {token_data.get('token_symbol', 'N/A')}
-        - Prix Actuel (USD): {token_data.get('current_price', 'N/A')}
-        - Market Cap (USD): {token_data.get('market_cap', 'N/A')}
-        - Variation 24h (%): {token_data.get('price_change_percent', 'N/A')}
+        - Nom: {token_data.get('name', 'N/A')}
+        - Symbole: {token_data.get('symbol', 'N/A')}
+        - Prix Actuel (USD): {token_data.get('price', 'N/A')}
+        - Market Cap (USD): {token_data.get('mc', 'N/A')}
+        - Variation 24h (%): {token_data.get('priceChange24h', 0)}
 
         Effectue une analyse de risque concise.
 
@@ -134,18 +123,17 @@ def index():
 
 @app.route("/tendances")
 def tendances():
-    if not app.config['MORALIS_API_KEY']:
-        return render_template("tendances.html", error="Clé API Moralis non configurée.")
+    if not app.config['BIRDEYE_API_KEY']:
+        return render_template("tendances.html", error="Clé API Birdeye non configurée.")
 
-    trending_data, error = MoralisService.get_trending_tokens()
+    trending_data, error = BirdeyeService.get_trending_tokens()
     
-    # Transformation des données pour correspondre au template
     transformed_data = [{
-        'logo': token.get('image_url'),
+        'logo': token.get('logoURI'),
         'name': token.get('name'),
         'symbol': token.get('symbol'),
-        'price_usd': token.get('price_usd'),
-        'price_change_24h_percent': token.get('price_change_24h_percent'),
+        'price_usd': token.get('price'),
+        'price_change_24h_percent': token.get('priceChange24h'),
         'token_address': token.get('address')
     } for token in trending_data]
 
@@ -157,37 +145,24 @@ def analyze():
     if not token_address:
         return render_template("results.html", results=[{"error": "L'adresse du token est requise."}])
 
-    price_data = MoralisService.get_token_price_data(token_address)
-    metadata = MoralisService.get_token_metadata(token_address)
+    token_data = BirdeyeService.get_token_overview(token_address)
 
-    if not price_data or "usdPrice" not in price_data:
-        return render_template("results.html", results=[{"error": "Token non trouvé ou erreur API Moralis."}])
-
-    # Calcul du Market Cap
-    market_cap = 0
-    try:
-        if metadata and metadata.get('totalSupply') and metadata.get('decimals'):
-            total_supply = int(metadata['totalSupply'])
-            decimals = int(metadata['decimals'])
-            real_supply = total_supply / (10 ** decimals)
-            market_cap = real_supply * float(price_data['usdPrice'])
-    except (ValueError, TypeError) as e:
-        logging.error(f"Erreur de calcul du market cap: {e}")
+    if not token_data:
+        return render_template("results.html", results=[{"error": "Token non trouvé ou erreur API Birdeye."}])
 
     # Préparation des données pour le template et l'IA
     result = {
         "token": token_address,
-        "token_name": price_data.get("tokenName", "N/A"),
-        "token_symbol": price_data.get("tokenSymbol", "N/A"),
-        "current_price": price_data.get("usdPrice", 0),
-        "price_change_percent": price_data.get("usdPriceChange24h", 0),
-        "market_cap": market_cap,
-        "pair_address": price_data.get("pairAddress", token_address),
-        "dexscreener_url": f"https://dexscreener.com/solana/{price_data.get('pairAddress', '')}?embed=1&theme=dark&info=0"
+        "token_name": token_data.get("name", "N/A"),
+        "token_symbol": token_data.get("symbol", "N/A"),
+        "current_price": token_data.get("price"),
+        "price_change_percent": token_data.get("priceChange24h"),
+        "market_cap": token_data.get("mc"), # mc = Market Cap
+        "dexscreener_url": f"https://dexscreener.com/solana/{token_address}?embed=1&theme=dark&info=0"
     }
 
     # Analyse par l'IA
-    ai_analysis = AIService.analyze_token(result)
+    ai_analysis = AIService.analyze_token(token_data)
     result["ai_analysis"] = ai_analysis
     result["total_score"] = ai_analysis.get("total_score", 0)
 
@@ -196,12 +171,12 @@ def analyze():
 # --- Gestionnaires d'Erreurs ---
 @app.errorhandler(404)
 def not_found(e):
-    return render_template("404.html"), 404
+    return "<h1>Page non trouvée</h1>", 404
 
 @app.errorhandler(500)
 def server_error(e):
     logging.error(f"Erreur Serveur 500: {e}")
-    return render_template("500.html"), 500
+    return "<h1>Erreur interne du serveur</h1>", 500
 
 if __name__ == "__main__":
-    app.run(debug=False)
+    app.run(debug=True)

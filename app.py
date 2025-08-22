@@ -1,43 +1,33 @@
 from flask import Flask, render_template, request
 import logging
-import time
 import os
 import json
+import requests # Ajout de requests pour les appels directs à l'API
 import google.generativeai as genai
 from moralis import sol_api
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, Optional
 
 app = Flask(__name__)
 
-# Configuration
-# It's recommended to set these as environment variables for security
+# --- Configuration ---
 app.config['GEMINI_API_KEY'] = os.environ.get('GEMINI_API_KEY')
 app.config['MORALIS_API_KEY'] = os.environ.get('MORALIS_API_KEY')
 
-# API Initialization
+# --- Initialisation des APIs ---
 try:
     genai.configure(api_key=app.config['GEMINI_API_KEY'])
     model = genai.GenerativeModel('gemini-1.5-flash')
-    print("INFO: Gemini API configured successfully")
+    logging.info("INFO: API Gemini configurée avec succès")
 except Exception as e:
-    print(f"ERROR: Gemini API configuration failed - {e}")
+    logging.error(f"ERREUR: La configuration de l'API Gemini a échoué - {e}")
     model = None
 
-# Logging Configuration
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('app.log'),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger(__name__)
+# --- Configuration du Logging ---
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Template Filters
+# --- Filtres Jinja2 pour le Template ---
 @app.template_filter()
 def format_price(value: float) -> str:
-    """Formats a float into a USD price string, removing trailing zeros."""
     try:
         value = float(value)
         return f"${value:,.10f}".rstrip('0').rstrip('.')
@@ -46,7 +36,6 @@ def format_price(value: float) -> str:
 
 @app.template_filter()
 def format_market_cap(value: float) -> str:
-    """Formats a large number into a human-readable market cap string (B, M, K)."""
     try:
         value = float(value)
         if value >= 1_000_000_000:
@@ -59,88 +48,86 @@ def format_market_cap(value: float) -> str:
     except (ValueError, TypeError):
         return "N/A"
 
-# Services
+# --- Services ---
 class MoralisService:
     @staticmethod
-    def get_token_data(token_address: str) -> Optional[Dict[str, Any]]:
-        """Fetches price and metadata for a specific SPL token."""
+    def get_token_price_data(token_address: str) -> Optional[Dict[str, Any]]:
+        """Récupère les données de prix pour un token SPL."""
         try:
             params = {"network": "mainnet", "address": token_address}
-            return sol_api.token.get_token_price(
-                api_key=app.config['MORALIS_API_KEY'], params=params
-            )
+            return sol_api.token.get_token_price(api_key=app.config['MORALIS_API_KEY'], params=params)
         except Exception as e:
-            logger.error(f"Moralis get_token_data error: {e}")
+            logging.error(f"Erreur Moralis (get_token_price_data): {e}")
+            return None
+
+    @staticmethod
+    def get_token_metadata(token_address: str) -> Optional[Dict[str, Any]]:
+        """Récupère les métadonnées (supply, etc.) pour un token SPL."""
+        try:
+            params = {"network": "mainnet", "addresses": [token_address]}
+            metadata = sol_api.token.get_token_metadata(api_key=app.config['MORALIS_API_KEY'], params=params)
+            return metadata[0] if metadata else None
+        except Exception as e:
+            logging.error(f"Erreur Moralis (get_token_metadata): {e}")
             return None
 
     @staticmethod
     def get_trending_tokens() -> tuple:
         """
-        Fetches the top 10 trending SPL tokens by 24h trading volume.
-        FIX: Corrected the API call to use the valid method.
+        CORRECTION: Utilise un appel direct à l'API Moralis Deep Index
+        car la fonction n'est pas disponible dans le module sol_api du SDK.
         """
+        url = "https://deep-index.moralis.io/api/v2.2/tokens/trending"
+        headers = {
+            "accept": "application/json",
+            "X-API-Key": app.config['MORALIS_API_KEY']
+        }
         try:
-            params = {"network": "mainnet"}
-            # The original call 'sol_api.market_data.get_top_spl_by_trading_volume' is incorrect.
-            # The correct method is sol_api.market_data.get_top_spl_tokens_by_24hr_volume()
-            result = sol_api.market_data.get_top_spl_tokens_by_24hr_volume(
-                api_key=app.config['MORALIS_API_KEY'], params=params
-            )
-            # Ensure the returned data has the keys the template expects
-            # The API returns a list of dictionaries.
-            return result.get('tokens', [])[:10], None
-        except Exception as e:
-            logger.error(f"Moralis get_trending_tokens error: {e}")
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            # L'API renvoie un objet avec des clés pour chaque chaîne, nous voulons Solana.
+            solana_trending = response.json().get("solana", [])
+            return solana_trending[:10], None
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Erreur API Moralis (get_trending_tokens): {e}")
             return [], str(e)
 
 class AIService:
     @staticmethod
-    def analyze_token(token_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """Analyzes token data using the Gemini AI model."""
+    def analyze_token(token_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Analyse les données du token avec le modèle Gemini AI."""
         if not model:
-            logger.error("AI model not initialized.")
-            return None
+            return {"error": "Modèle IA non initialisé."}
 
         prompt = f"""
-        Analyze the Solana token with the following data:
-        - Name: {token_data.get('token_name', 'N/A')}
-        - Symbol: {token_data.get('token_symbol', 'N/A')}
-        - Address: {token_data.get('token_address', 'N/A')}
-        - Current Price (USD): {token_data.get('current_price', 'N/A')}
-        - 24h Price Change (%): {token_data.get('price_change', 'N/A')}
+        Analyse ce token Solana avec les données suivantes :
+        - Nom: {token_data.get('token_name', 'N/A')}
+        - Symbole: {token_data.get('token_symbol', 'N/A')}
+        - Prix Actuel (USD): {token_data.get('current_price', 'N/A')}
+        - Market Cap (USD): {token_data.get('market_cap', 'N/A')}
+        - Variation 24h (%): {token_data.get('price_change_percent', 'N/A')}
 
-        Based on this limited information, perform a brief risk analysis.
+        Effectue une analyse de risque concise.
 
-        Return your response ONLY in JSON format, with no other text or markdown.
-        The JSON object must have these exact keys:
-        - "total_score": A global risk score out of 100 (0=very high risk, 100=very low risk).
-        - "final_verdict": A short, direct investment verdict from this list: "BUY NOW", "POTENTIAL BUY", "HOLD", "WAIT", "HIGH-RISK".
-        - "probability": An estimated probability (as an integer) of a positive trend in the short term.
-        - "summary": A very brief, one-sentence summary explaining your reasoning.
-
-        Example JSON output:
-        {{
-          "total_score": 75,
-          "final_verdict": "POTENTIAL BUY",
-          "probability": 60,
-          "summary": "The token shows a positive 24-hour change, suggesting recent momentum, but further research is needed."
-        }}
+        Retourne ta réponse UNIQUEMENT en format JSON valide, sans texte additionnel.
+        L'objet JSON doit contenir ces clés exactes :
+        - "total_score": Un score de confiance global sur 100 (0=très risqué, 100=très fiable).
+        - "final_verdict": Un verdict court et direct parmi : "BUY NOW", "POTENTIAL BUY", "HOLD", "WAIT", "HIGH-RISK".
+        - "probability": La probabilité estimée (en entier) d'une tendance positive à court terme.
+        - "summary": Un résumé d'une phrase expliquant ton raisonnement.
         """
         try:
             response = model.generate_content(prompt)
-            # Clean the response to ensure it's valid JSON
             cleaned_response = response.text.strip().replace("```json", "").replace("```", "")
             return json.loads(cleaned_response)
         except Exception as e:
-            logger.error(f"Gemini AI analysis error: {e}")
+            logging.error(f"Erreur analyse Gemini: {e}")
             return {
-                "total_score": 0,
-                "final_verdict": "ERROR",
-                "probability": 0,
-                "summary": "The AI analysis failed to complete. Please try again."
+                "total_score": 0, "final_verdict": "ERROR", "probability": 0,
+                "summary": "L'analyse par l'IA a échoué. Veuillez réessayer."
             }
 
-# Routes
+# --- Routes Flask ---
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -148,21 +135,19 @@ def index():
 @app.route("/tendances")
 def tendances():
     if not app.config['MORALIS_API_KEY']:
-        return render_template("tendances.html", error="Moralis API key not configured.")
+        return render_template("tendances.html", error="Clé API Moralis non configurée.")
 
     trending_data, error = MoralisService.get_trending_tokens()
     
-    # Data transformation to match template keys
-    transformed_data = []
-    for token in trending_data:
-        transformed_data.append({
-            'logo': token.get('logo'),
-            'name': token.get('name'),
-            'symbol': token.get('symbol'),
-            'price_usd': token.get('price_usd'),
-            'price_change_24h_percent': token.get('price_change_24h_percent'),
-            'token_address': token.get('token_address')
-        })
+    # Transformation des données pour correspondre au template
+    transformed_data = [{
+        'logo': token.get('image_url'),
+        'name': token.get('name'),
+        'symbol': token.get('symbol'),
+        'price_usd': token.get('price_usd'),
+        'price_change_24h_percent': token.get('price_change_24h_percent'),
+        'token_address': token.get('address')
+    } for token in trending_data]
 
     return render_template("tendances.html", trending_data=transformed_data, error=error)
 
@@ -170,47 +155,53 @@ def tendances():
 def analyze():
     token_address = request.form.get("token", "").strip()
     if not token_address:
-        return render_template("results.html", results=[{"error": "Token address is required."}])
+        return render_template("results.html", results=[{"error": "L'adresse du token est requise."}])
 
-    # 1. Get data from Moralis
-    token_data = MoralisService.get_token_data(token_address)
-    if not token_data or "usdPrice" not in token_data:
-        return render_template("results.html", results=[{"error": "Token not found or Moralis API error."}])
+    price_data = MoralisService.get_token_price_data(token_address)
+    metadata = MoralisService.get_token_metadata(token_address)
 
-    # 2. Prepare data for analysis and rendering
+    if not price_data or "usdPrice" not in price_data:
+        return render_template("results.html", results=[{"error": "Token non trouvé ou erreur API Moralis."}])
+
+    # Calcul du Market Cap
+    market_cap = 0
+    try:
+        if metadata and metadata.get('totalSupply') and metadata.get('decimals'):
+            total_supply = int(metadata['totalSupply'])
+            decimals = int(metadata['decimals'])
+            real_supply = total_supply / (10 ** decimals)
+            market_cap = real_supply * float(price_data['usdPrice'])
+    except (ValueError, TypeError) as e:
+        logging.error(f"Erreur de calcul du market cap: {e}")
+
+    # Préparation des données pour le template et l'IA
     result = {
-        "token": token_address, # The template uses 'token' for links
-        "token_address": token_address,
-        "token_name": token_data.get("tokenName", "N/A"),
-        "token_symbol": token_data.get("tokenSymbol", "N/A"),
-        "current_price": token_data.get("usdPrice", 0),
-        "price_change": token_data.get("usdPriceChange24h", 0),
-        "pair_address": token_data.get("address", "N/A")
+        "token": token_address,
+        "token_name": price_data.get("tokenName", "N/A"),
+        "token_symbol": price_data.get("tokenSymbol", "N/A"),
+        "current_price": price_data.get("usdPrice", 0),
+        "price_change_percent": price_data.get("usdPriceChange24h", 0),
+        "market_cap": market_cap,
+        "pair_address": price_data.get("pairAddress", token_address),
+        "dexscreener_url": f"https://dexscreener.com/solana/{price_data.get('pairAddress', '')}?embed=1&theme=dark&info=0"
     }
 
-    # 3. Get AI Analysis (New Feature)
-    ai_analysis_result = AIService.analyze_token(result)
-    if ai_analysis_result:
-        result["ai_analysis"] = ai_analysis_result
-        result["total_score"] = ai_analysis_result.get("total_score", 0)
-    else:
-        result["error"] = "AI analysis could not be performed."
-        result["total_score"] = 0
-        result["ai_analysis"] = {
-            "final_verdict": "N/A", "probability": 0, "summary": "Analysis failed."
-        }
+    # Analyse par l'IA
+    ai_analysis = AIService.analyze_token(result)
+    result["ai_analysis"] = ai_analysis
+    result["total_score"] = ai_analysis.get("total_score", 0)
 
     return render_template("results.html", results=[result])
 
-# Error Handlers
+# --- Gestionnaires d'Erreurs ---
 @app.errorhandler(404)
 def not_found(e):
     return render_template("404.html"), 404
 
 @app.errorhandler(500)
 def server_error(e):
-    logger.error(f"Server Error 500: {e}")
+    logging.error(f"Erreur Serveur 500: {e}")
     return render_template("500.html"), 500
 
 if __name__ == "__main__":
-    app.run(debug=False, host='0.0.0.0', port=5000)
+    app.run(debug=False)

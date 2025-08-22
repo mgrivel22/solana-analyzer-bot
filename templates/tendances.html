@@ -41,7 +41,8 @@
                         </td>
                         <td>${{ token.price }}</td>
                         <td>
-                            {% set change = token.priceChange24h|float(0) %}
+                            <!-- CORRECTION : Utilisation de la clé 'priceChange24hPercent' -->
+                            {% set change = token.priceChange24hPercent|float(0) %}
                             <span class="price-change" style="color: {{ 'var(--gainer-color)' if change > 0 else 'var(--loser-color)' }}">
                                 {{ "+" if change > 0 }}{{ "%.2f"|format(change) }}%
                             </span>

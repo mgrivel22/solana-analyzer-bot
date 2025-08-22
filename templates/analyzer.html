@@ -8,36 +8,209 @@
         :root {
             --primary-color: #14f195; --background-color: #0a0a0a; --surface-color: #1a1a1a;
             --text-color: #e0e0e0; --secondary-text-color: #888;
+            --verdict-buy: #28a745; --verdict-hold: #ffc107; --verdict-sell: #dc3545;
         }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--background-color); color: var(--text-color); margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 1rem; }
-        .container { width: 100%; max-width: 600px; margin: 0 auto; text-align: center; }
-        h1 { font-size: 2.5rem; font-weight: 800; color: var(--primary-color); }
-        .subtitle { font-size: 1.1rem; color: var(--secondary-text-color); margin-bottom: 2.5rem; }
-        .form-container { background-color: var(--surface-color); padding: 2.5rem; border-radius: 16px; border: 1px solid #2a2a2a; }
-        input[type="text"] { width: 100%; padding: 14px; margin-bottom: 1.5rem; background-color: #252525; border: 1px solid #444; border-radius: 8px; color: var(--text-color); font-size: 1rem; box-sizing: border-box; }
-        input[type="submit"] { background-color: var(--primary-color); color: #0a0a0a; padding: 14px 28px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1rem; width: 100%; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--background-color); color: var(--text-color); margin: 0; padding: 2rem; }
+        .container { width: 100%; max-width: 900px; margin: 0 auto; }
+        .form-container { background-color: var(--surface-color); padding: 2.5rem; border-radius: 16px; text-align: center; margin-bottom: 2rem; }
+        input[type="text"] { width: 100%; max-width: 500px; padding: 14px; margin-bottom: 1.5rem; background-color: #252525; border: 1px solid #444; border-radius: 8px; color: var(--text-color); font-size: 1rem; box-sizing: border-box; }
+        button { background-color: var(--primary-color); color: #0a0a0a; padding: 14px 28px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1rem; }
+        button:disabled { background-color: #555; cursor: not-allowed; }
         .nav-link { display: inline-block; margin-top: 2rem; color: var(--primary-color); text-decoration: none; }
+        #results-container { display: none; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid var(--primary-color); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 2rem auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        /* Styles des résultats (similaires à l'ancien analyzer_results.html) */
+        .header { text-align: center; margin-bottom: 2rem; }
+        .header h1 { margin: 0; font-size: 2.5rem; } .header h2 { margin: 0; font-size: 1.5rem; color: var(--secondary-text-color); }
+        .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; }
+        .verdict-card, .risk-card { background-color: var(--surface-color); padding: 1.5rem; border-radius: 12px; text-align: center; }
+        .verdict-text { font-size: 2.5rem; font-weight: bold; }
+        .verdict-STRONG-BUY, .verdict-BUY { color: var(--verdict-buy); } .verdict-HOLD { color: var(--verdict-hold); } .verdict-SELL, .verdict-HIGH-RISK { color: var(--verdict-sell); }
+        .risk-score { font-size: 2.5rem; font-weight: bold; }
+        .stats-grid { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; }
+        .stat-box { background-color: #2a2a2a; padding: 1rem; border-radius: 8px; text-align: center; }
+        .stat-box strong { color: var(--secondary-text-color); display: block; font-size: 0.8em; margin-bottom: 5px; }
+        .stat-box p { margin: 0; font-size: 1.2rem; color: #fff; }
+        .analysis-details { background-color: var(--surface-color); padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; }
+        .analysis-details ul { padding-left: 20px; } .analysis-details .summary { font-style: italic; margin-top: 1.5rem; border-top: 1px solid #333; padding-top: 1rem; }
+        .chart-container iframe { width: 100%; height: 450px; border-radius: 12px; border: 1px solid #333; }
         .error { color: #ffc107; margin-top: 1rem; }
+        @media (max-width: 700px) { .main-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
     <div class="container">
-        <header>
+        <a href="/" class="nav-link">← Retour à l'accueil</a>
+        <div class="form-container">
             <h1>🧠 Analyseur de Token IA</h1>
             <p class="subtitle">Entrez une adresse de token Solana pour obtenir une analyse complète.</p>
-        </header>
-        <main>
-            <div class="form-container">
-                <form action="/analyzer" method="post">
-                    <input type="text" id="token" name="token" required placeholder="Collez l'adresse du token ici...">
-                    <input type="submit" value="Analyser le Token">
-                </form>
-                {% if error %}
-                    <p class="error">{{ error }}</p>
-                {% endif %}
-            </div>
-            <a href="/" class="nav-link">← Retour à l'accueil</a>
-        </main>
+            <input type="text" id="token-address" required placeholder="Collez l'adresse du token ici...">
+            <button id="analyze-btn">Analyser le Token</button>
+            <div id="loader" class="loader" style="display: none;"></div>
+            <p id="error-message" class="error"></p>
+        </div>
+        
+        <div id="results-container">
+            <!-- Les résultats seront injectés ici par JavaScript -->
+        </div>
     </div>
+
+    <script>
+        const analyzeBtn = document.getElementById('analyze-btn');
+        const tokenAddressInput = document.getElementById('token-address');
+        const resultsContainer = document.getElementById('results-container');
+        const loader = document.getElementById('loader');
+        const errorMessage = document.getElementById('error-message');
+
+        analyzeBtn.addEventListener('click', handleAnalysis);
+
+        async function handleAnalysis() {
+            const tokenAddress = tokenAddressInput.value.trim();
+            if (!tokenAddress) {
+                showError("L'adresse du token est requise.");
+                return;
+            }
+
+            // Réinitialiser l'interface
+            startLoading();
+
+            try {
+                // 1. Appel à DexScreener (côté client)
+                const dexScreenerData = await fetchDexScreenerData(tokenAddress);
+                if (!dexScreenerData) return;
+
+                // 2. Appel à notre propre API pour l'analyse Gemini (côté serveur)
+                const geminiAnalysis = await fetchGeminiAnalysis(dexScreenerData);
+                if (!geminiAnalysis) return;
+
+                // 3. Afficher les résultats
+                displayResults(dexScreenerData, geminiAnalysis);
+
+            } catch (error) {
+                console.error("Erreur dans le processus d'analyse:", error);
+                showError("Une erreur inattendue s'est produite.");
+            } finally {
+                stopLoading();
+            }
+        }
+
+        async function fetchDexScreenerData(address) {
+            const url = `https://api.dexscreener.com/latest/dex/tokens/${address}`;
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`Erreur DexScreener: ${response.statusText}`);
+                }
+                const data = await response.json();
+                if (!data || !data.pairs || data.pairs.length === 0) {
+                    throw new Error("Token non trouvé sur DexScreener.");
+                }
+                // On choisit la pair avec le plus de liquidité
+                return data.pairs.reduce((max, p) => (p.liquidity?.usd ?? 0) > (max.liquidity?.usd ?? 0) ? p : max, data.pairs[0]);
+            } catch (error) {
+                showError(error.message);
+                return null;
+            }
+        }
+        
+        async function fetchGeminiAnalysis(tokenData) {
+            // On ne garde que les données nécessaires pour le prompt
+            const dataForPrompt = {
+                nom: tokenData.baseToken?.name,
+                symbole: tokenData.baseToken?.symbol,
+                prix_usd: tokenData.priceUsd,
+                variation_24h_pourcent: tokenData.priceChange?.h24,
+                volume_24h_usd: tokenData.volume?.h24,
+                liquidite_usd: tokenData.liquidity?.usd,
+                market_cap: tokenData.fdv,
+                transactions_24h: (tokenData.txns?.h24?.buys ?? 0) + (tokenData.txns?.h24?.sells ?? 0)
+            };
+            
+            try {
+                const response = await fetch('/api/gemini-analysis', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dataForPrompt)
+                });
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.error || "L'analyse IA a échoué.");
+                }
+                return await response.json();
+            } catch (error) {
+                showError(error.message);
+                return null;
+            }
+        }
+
+        function displayResults(token, analysis) {
+            const formatNumber = (num) => {
+                if (num === undefined || num === null) return "N/A";
+                num = Number(num);
+                if (num >= 1e9) return `${(num / 1e9).toFixed(2)}B`;
+                if (num >= 1e6) return `${(num / 1e6).toFixed(2)}M`;
+                if (num >= 1e3) return `${(num / 1e3).toFixed(2)}K`;
+                return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            };
+
+            const positivePoints = analysis.positive_points.map(p => `<li>${p}</li>`).join('');
+            const negativePoints = analysis.negative_points.map(p => `<li>${p}</li>`).join('');
+
+            resultsContainer.innerHTML = `
+                <div class="header">
+                    <h1>${token.baseToken.name}</h1>
+                    <h2>$${token.baseToken.symbol}</h2>
+                </div>
+                <div class="main-grid">
+                    <div class="verdict-card">
+                        <h3>Verdict IA</h3>
+                        <p class="verdict-text verdict-${analysis.verdict.replace(' ', '-')}">${analysis.verdict}</p>
+                    </div>
+                    <div class="risk-card">
+                        <h3>Score de Risque</h3>
+                        <p class="risk-score">${analysis.risk_score}/10</p>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-box"><strong>Prix</strong><p>$${parseFloat(token.priceUsd).toPrecision(4)}</p></div>
+                        <div class="stat-box"><strong>Variation 24h</strong><p>${token.priceChange.h24}%</p></div>
+                        <div class="stat-box"><strong>Volume 24h</strong><p>$${formatNumber(token.volume.h24)}</p></div>
+                        <div class="stat-box"><strong>Liquidité</strong><p>$${formatNumber(token.liquidity.usd)}</p></div>
+                        <div class="stat-box"><strong>Market Cap</strong><p>$${formatNumber(token.fdv)}</p></div>
+                        <div class="stat-box"><strong>TXNs 24h</strong><p>${(token.txns.h24.buys + token.txns.h24.sells)}</p></div>
+                    </div>
+                </div>
+                <div class="analysis-details">
+                    <h3>Points Positifs</h3>
+                    <ul>${positivePoints}</ul>
+                    <h3>Points Négatifs</h3>
+                    <ul>${negativePoints}</ul>
+                    <p class="summary"><strong>Résumé IA :</strong> ${analysis.summary}</p>
+                </div>
+                <div class="chart-container">
+                    <iframe src="https://dexscreener.com/solana/${token.pairAddress}?embed=1&theme=dark&info=0"></iframe>
+                </div>
+            `;
+        }
+
+        function startLoading() {
+            analyzeBtn.disabled = true;
+            errorMessage.textContent = '';
+            resultsContainer.style.display = 'none';
+            resultsContainer.innerHTML = '';
+            loader.style.display = 'block';
+        }
+
+        function stopLoading() {
+            analyzeBtn.disabled = false;
+            loader.style.display = 'none';
+            resultsContainer.style.display = 'block';
+        }
+
+        function showError(message) {
+            errorMessage.textContent = `Erreur : ${message}`;
+            stopLoading();
+        }
+    </script>
 </body>
 </html>

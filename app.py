@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 import logging
 import os
 import json
@@ -37,24 +37,7 @@ def format_number(value):
         return f"{value:,.2f}"
     except (ValueError, TypeError): return "N/A"
 
-# --- Services ---
-class DexScreenerService:
-    @staticmethod
-    def get_token_data(token_address: str) -> Optional[Dict[str, Any]]:
-        url = f"https://api.dexscreener.com/latest/dex/tokens/{token_address}"
-        try:
-            response = requests.get(url)
-            response.raise_for_status()
-            data = response.json()
-            # On choisit la pair avec le plus de liquidité en USD
-            if data and data.get('pairs'):
-                main_pair = max(data['pairs'], key=lambda p: p.get('liquidity', {}).get('usd', 0))
-                return main_pair
-            return None
-        except requests.exceptions.RequestException as e:
-            logging.error(f"Erreur API DexScreener: {e}")
-            return None
-
+# --- Services (uniquement pour les tendances) ---
 class BirdeyeService:
     @staticmethod
     def get_trending_tokens() -> tuple[List[Dict[str, Any]], Optional[str]]:
@@ -69,73 +52,51 @@ class BirdeyeService:
             logging.error(f"Erreur API Birdeye (get_trending_tokens): {e}")
             return [], str(e)
 
-class AIService:
-    @staticmethod
-    def analyze_token(token_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        if not model:
-            return {"error": "Le service IA n'est pas configuré."}
-        
-        # Préparation des données pour le prompt
-        data_for_prompt = {
-            "nom": token_data.get('baseToken', {}).get('name'),
-            "symbole": token_data.get('baseToken', {}).get('symbol'),
-            "prix_usd": token_data.get('priceUsd'),
-            "variation_24h_pourcent": token_data.get('priceChange', {}).get('h24'),
-            "volume_24h_usd": token_data.get('volume', {}).get('h24'),
-            "liquidite_usd": token_data.get('liquidity', {}).get('usd'),
-            "market_cap": token_data.get('fdv'), # Fully Diluted Valuation (Market Cap)
-            "transactions_24h": token_data.get('txns', {}).get('h24', {}).get('buys', 0) + token_data.get('txns', {}).get('h24', {}).get('sells', 0)
-        }
-
-        prompt = f"""
-        Analyse ce token Solana avec les données de DexScreener : {json.dumps(data_for_prompt)}.
-        Agis comme un analyste crypto expert et concis.
-
-        Fournis une analyse structurée.
-        1.  "verdict": Un verdict d'investissement unique et direct parmi : "STRONG BUY", "BUY", "HOLD", "SELL", "HIGH-RISK".
-        2.  "risk_score": Un score de risque de 1 (très faible) à 10 (très élevé).
-        3.  "positive_points": Une liste de 2 à 3 points positifs clés (en français).
-        4.  "negative_points": Une liste de 2 à 3 points négatifs ou risques (en français).
-        5.  "summary": Un résumé final d'une phrase expliquant ta recommandation.
-
-        Retourne ta réponse UNIQUEMENT en format JSON valide.
-        """
-        try:
-            response = model.generate_content(prompt)
-            cleaned_response = response.text.strip().replace("```json", "").replace("```", "")
-            return json.loads(cleaned_response)
-        except Exception as e:
-            logging.error(f"Erreur analyse Gemini: {e}")
-            return {"error": "L'analyse par l'IA a échoué.", "summary": str(e)}
-
 # --- Routes Flask ---
 @app.route("/")
 def index():
     return render_template("index.html")
 
-@app.route("/analyzer", methods=["GET", "POST"])
+@app.route("/analyzer")
 def analyzer():
-    if request.method == "POST":
-        token_address = request.form.get("token", "").strip()
-        if not token_address:
-            return render_template("analyzer.html", error="L'adresse du token est requise.")
-        
-        token_data = DexScreenerService.get_token_data(token_address)
-        if not token_data:
-            return render_template("analyzer.html", error="Token non trouvé sur DexScreener ou erreur API.")
-
-        ai_analysis = AIService.analyze_token(token_data)
-        
-        return render_template("analyzer_results.html", 
-                               analysis=ai_analysis, 
-                               token=token_data)
-    
+    # Sert simplement la page HTML. Toute la logique est maintenant côté client.
     return render_template("analyzer.html")
 
 @app.route("/tendances")
 def tendances():
     trending_data, error = BirdeyeService.get_trending_tokens()
     return render_template("tendances.html", trending_data=trending_data, error=error)
+
+# --- NOUVELLE ROUTE API ---
+@app.route("/api/gemini-analysis", methods=["POST"])
+def gemini_analysis_proxy():
+    if not model:
+        return jsonify({"error": "Le service IA n'est pas configuré sur le serveur."}), 500
+
+    token_data = request.json
+    if not token_data:
+        return jsonify({"error": "Aucune donnée de token fournie."}), 400
+
+    # Préparation du prompt pour Gemini
+    prompt = f"""
+    Analyse ce token Solana avec les données de DexScreener : {json.dumps(token_data)}.
+    Agis comme un analyste crypto expert et concis.
+    Fournis une analyse structurée.
+    1. "verdict": Un verdict d'investissement unique et direct parmi : "STRONG BUY", "BUY", "HOLD", "SELL", "HIGH-RISK".
+    2. "risk_score": Un score de risque de 1 (très faible) à 10 (très élevé).
+    3. "positive_points": Une liste de 2 à 3 points positifs clés (en français).
+    4. "negative_points": Une liste de 2 à 3 points négatifs ou risques (en français).
+    5. "summary": Un résumé final d'une phrase expliquant ta recommandation.
+    Retourne ta réponse UNIQUEMENT en format JSON valide.
+    """
+    try:
+        response = model.generate_content(prompt)
+        cleaned_response = response.text.strip().replace("```json", "").replace("```", "")
+        ai_analysis = json.loads(cleaned_response)
+        return jsonify(ai_analysis)
+    except Exception as e:
+        logging.error(f"Erreur analyse Gemini: {e}")
+        return jsonify({"error": "L'analyse par l'IA a échoué.", "summary": str(e)}), 500
 
 # --- Gestionnaires d'Erreurs ---
 @app.errorhandler(404)

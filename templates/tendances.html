@@ -7,67 +7,52 @@
     <style>
         :root {
             --primary-color: #14f195; --background-color: #121212; --surface-color: #1e1e1e;
-            --text-color: #e0e0e0; --secondary-text-color: #888; --axiom-purple: #8A2BE2;
+            --text-color: #e0e0e0; --secondary-text-color: #888;
             --gainer-color: #28a745; --loser-color: #dc3545;
         }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--background-color); color: var(--text-color); margin: 0; padding: 2rem; }
-        .container { max-width: 900px; margin: 0 auto; }
+        .container { max-width: 1100px; margin: 0 auto; }
         h1 { color: var(--primary-color); text-align: center; }
-        .top-nav { margin-bottom: 2rem; }
-        .nav-link { color: var(--primary-color); text-decoration: none; font-size: 1.1rem; }
-        .error { text-align: center; color: #ffc107; background-color: #2a2a2a; padding: 1rem; border-radius: 8px; }
-        .trending-table { width: 100%; border-collapse: collapse; background-color: var(--surface-color); border-radius: 12px; overflow: hidden; border: 1px solid #2a2a2a; }
-        .trending-table th, .trending-table td { padding: 1rem; text-align: left; border-bottom: 1px solid #2a2a2a; }
-        .trending-table th { font-size: 0.9em; text-transform: uppercase; color: var(--secondary-text-color); }
-        .trending-table tr:last-child td { border-bottom: none; }
-        .trending-table tr:hover { background-color: #252525; }
-        .token-info { display: flex; align-items: center; }
-        .token-info img { width: 32px; height: 32px; vertical-align: middle; margin-right: 10px; border-radius: 50%; background-color: #333;}
-        .token-name { font-weight: bold; }
+        .nav-link { display: inline-block; margin-bottom: 2rem; color: var(--primary-color); text-decoration: none; }
+        .data-table { width: 100%; border-collapse: collapse; background-color: var(--surface-color); border-radius: 12px; overflow: hidden; }
+        .data-table th, .data-table td { padding: 1rem; text-align: left; border-bottom: 1px solid #2a2a2a; }
         .price-change { font-weight: bold; }
-        .btn-axiom { background-color: var(--axiom-purple); color: white; padding: 8px 12px; border-radius: 6px; text-decoration: none; font-size: 0.9em; font-weight: bold; }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="top-nav"><a href="/" class="nav-link">← Retour à l'Analyseur</a></div>
-        <h1>🚀 Top 50 des Tokens par Volume sur Solana</h1>
-
+        <a href="/" class="nav-link">← Retour à l'accueil</a>
+        <h1 style="text-align: center;">🔥 Top 50 par Volume (24h)</h1>
+        
         {% if error %}
-            <p class="error">{{ error }}</p>
+            <p style="text-align:center; color: #ffc107;">{{ error }}</p>
         {% elif trending_data %}
-        <p style="text-align: center; color: var(--secondary-text-color); margin-bottom: 2rem;">Tokens avec le plus grand volume de transactions sur les dernières 24 heures.</p>
-        <table class="trending-table">
-            <thead><tr><th>#</th><th>Token</th><th>Prix (USD)</th><th>Chg. 24h</th><th></th></tr></thead>
-            <tbody>
-                {% for token in trending_data %}
-                <tr>
-                    <td>{{ loop.index }}</td>
-                    <td>
-                        <div class="token-info">
-                            <img src="{{ token.logo }}" alt="logo" onerror="this.src='https://placehold.co/32x32/333/FFF?text=?'">
+            <table class="data-table">
+                <thead><tr><th>#</th><th>Token</th><th>Prix (USD)</th><th>Chg. 24h</th><th>Market Cap</th></tr></thead>
+                <tbody>
+                    {% for token in trending_data %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>
                             <div>
-                                <div class="token-name">{{ token.name }}</div>
+                                <strong>{{ token.name }}</strong>
                                 <div style="font-size: 0.8em; color: var(--secondary-text-color);">${{ token.symbol }}</div>
                             </div>
-                        </div>
-                    </td>
-                    <td>{{ token.price_usd|format_price }}</td>
-                    <td>
-                        {% set change = token.price_change_24h_percent|float(0) %}
-                        <span class="price-change" style="color: {{ 'var(--gainer-color)' if change > 0 else 'var(--loser-color)' }}">
-                            {{ "+" if change > 0 }}{{ "%.2f"|format(change) }}%
-                        </span>
-                    </td>
-                    <td>
-                        <a href="https://axiom.trade/t/{{ token.token_address }}/@math96826" target="_blank" class="btn-axiom">Trader</a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                        </td>
+                        <td>${{ token.price }}</td>
+                        <td>
+                            {% set change = token.priceChange24h|float(0) %}
+                            <span class="price-change" style="color: {{ 'var(--gainer-color)' if change > 0 else 'var(--loser-color)' }}">
+                                {{ "+" if change > 0 }}{{ "%.2f"|format(change) }}%
+                            </span>
+                        </td>
+                        <td>${{ token.mc|format_number }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         {% else %}
-        <p class="error">Aucun token trouvé pour le moment.</p>
+            <p style="text-align:center; color: #ffc107;">Données non disponibles.</p>
         {% endif %}
     </div>
 </body>

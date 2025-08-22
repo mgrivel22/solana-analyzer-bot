@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Résultats d'Analyse IA</title>
+    <style>
+        :root {
+            --primary-color: #14f195; --background-color: #121212; --surface-color: #1e1e1e;
+            --text-color: #e0e0e0; --secondary-text-color: #888;
+            --verdict-buy: #28a745; --verdict-hold: #ffc107; --verdict-sell: #dc3545;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--background-color); color: var(--text-color); margin: 0; padding: 2rem; }
+        .container { max-width: 900px; margin: 0 auto; }
+        .nav-link { display: inline-block; margin-bottom: 2rem; color: var(--primary-color); text-decoration: none; }
+        .header { text-align: center; margin-bottom: 2rem; }
+        .header h1 { margin: 0; font-size: 2.5rem; }
+        .header h2 { margin: 0; font-size: 1.5rem; color: var(--secondary-text-color); }
+        .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; }
+        .verdict-card, .risk-card { background-color: var(--surface-color); padding: 1.5rem; border-radius: 12px; text-align: center; }
+        .verdict-card h3 { margin: 0 0 0.5rem 0; color: var(--secondary-text-color); text-transform: uppercase; font-size: 1rem; }
+        .verdict-text { font-size: 2.5rem; font-weight: bold; }
+        .verdict-STRONG-BUY, .verdict-BUY { color: var(--verdict-buy); }
+        .verdict-HOLD { color: var(--verdict-hold); }
+        .verdict-SELL, .verdict-HIGH-RISK { color: var(--verdict-sell); }
+        .risk-score { font-size: 2.5rem; font-weight: bold; }
+        .stats-grid { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; }
+        .stat-box { background-color: #2a2a2a; padding: 1rem; border-radius: 8px; text-align: center; }
+        .stat-box strong { color: var(--secondary-text-color); display: block; font-size: 0.8em; margin-bottom: 5px; }
+        .stat-box p { margin: 0; font-size: 1.2rem; color: #fff; }
+        .analysis-details { background-color: var(--surface-color); padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; }
+        .analysis-details h3 { margin-top: 0; }
+        .analysis-details ul { padding-left: 20px; }
+        .analysis-details .summary { font-style: italic; margin-top: 1.5rem; border-top: 1px solid #333; padding-top: 1rem; }
+        .chart-container iframe { width: 100%; height: 450px; border-radius: 12px; border: 1px solid #333; }
+        @media (max-width: 700px) { .main-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/analyzer" class="nav-link">← Nouvelle Analyse</a>
+        
+        {% if token and analysis and not analysis.error %}
+            <div class="header">
+                <h1>{{ token.baseToken.name }}</h1>
+                <h2>${{ token.baseToken.symbol }}</h2>
+            </div>
+
+            <div class="main-grid">
+                <div class="verdict-card">
+                    <h3>Verdict IA</h3>
+                    <p class="verdict-text verdict-{{ analysis.verdict|replace(' ', '-') }}">{{ analysis.verdict }}</p>
+                </div>
+                <div class="risk-card">
+                    <h3>Score de Risque</h3>
+                    <p class="risk-score">{{ analysis.risk_score }}/10</p>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-box"><strong>Prix</strong><p>${{ token.priceUsd }}</p></div>
+                    <div class="stat-box"><strong>Variation 24h</strong><p>{{ token.priceChange.h24 }}%</p></div>
+                    <div class="stat-box"><strong>Volume 24h</strong><p>${{ token.volume.h24|format_number }}</p></div>
+                    <div class="stat-box"><strong>Liquidité</strong><p>${{ token.liquidity.usd|format_number }}</p></div>
+                    <div class="stat-box"><strong>Market Cap</strong><p>${{ token.fdv|format_number }}</p></div>
+                    <div class="stat-box"><strong>TXNs 24h</strong><p>{{ token.txns.h24.buys + token.txns.h24.sells }}</p></div>
+                </div>
+            </div>
+
+            <div class="analysis-details">
+                <h3>Points Positifs</h3>
+                <ul>{% for point in analysis.positive_points %}<li>{{ point }}</li>{% endfor %}</ul>
+                <h3>Points Négatifs</h3>
+                <ul>{% for point in analysis.negative_points %}<li>{{ point }}</li>{% endfor %}</ul>
+                <p class="summary"><strong>Résumé IA :</strong> {{ analysis.summary }}</p>
+            </div>
+
+            <div class="chart-container">
+                <iframe src="https://dexscreener.com/solana/{{ token.pairAddress }}?embed=1&theme=dark&info=0"></iframe>
+            </div>
+
+        {% else %}
+            <div class="header">
+                <h1>Analyse Impossible</h1>
+                <p style="color: #ffc107;">{{ analysis.summary or 'Les données du token n\'ont pas pu être analysées.' }}</p>
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>

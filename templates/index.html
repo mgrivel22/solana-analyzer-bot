@@ -3,48 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Solana Analysis Hub</title>
+    <title>Solana AI Analyzer</title>
     <style>
         :root {
             --primary-color: #14f195; --background-color: #0a0a0a; --surface-color: #1a1a1a;
-            --text-color: #e0e0e0; --secondary-text-color: #888; --axiom-purple: #8A2BE2;
+            --text-color: #e0e0e0; --secondary-text-color: #888;
         }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--background-color); color: var(--text-color); margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 1rem; }
-        .container { text-align: center; }
+        .container { text-align: center; max-width: 800px; }
         h1 { font-size: 3rem; font-weight: 800; background: linear-gradient(90deg, var(--primary-color), #4cffc1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 1rem; }
-        .subtitle { font-size: 1.2rem; color: var(--secondary-text-color); margin-bottom: 3rem; max-width: 600px; margin-left:auto; margin-right:auto;}
-        .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; max-width: 1000px; margin: 0 auto; }
-        .feature-card { background-color: var(--surface-color); padding: 2rem; border-radius: 16px; border: 1px solid #2a2a2a; text-decoration: none; color: var(--text-color); transition: transform 0.3s, box-shadow 0.3s; }
-        .feature-card:hover { transform: translateY(-5px); box-shadow: 0 8px 32px rgba(20, 241, 149, 0.1); }
-        .feature-card h2 { font-size: 1.5rem; margin-top: 0; color: var(--primary-color); }
-        .feature-card p { color: var(--secondary-text-color); }
+        .subtitle { font-size: 1.2rem; color: var(--secondary-text-color); margin-bottom: 3rem; }
+        .main-card { background-color: var(--surface-color); padding: 2.5rem; border-radius: 16px; border: 1px solid #2a2a2a; margin-bottom: 2rem; }
+        .main-card h2 { margin-top: 0; font-size: 1.8rem; }
+        .main-card p { color: var(--secondary-text-color); }
+        .btn-main { display: inline-block; background-color: var(--primary-color); color: #0a0a0a; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 1rem; transition: background-color 0.2s; }
+        .secondary-link { display: inline-block; margin-top: 1.5rem; color: var(--primary-color); }
         footer { margin-top: 4rem; font-size: 0.9em; color: var(--secondary-text-color); }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>🚀 Solana Analysis Hub</h1>
-            <p class="subtitle">Outils d'analyse on-chain pour trouver les meilleures opportunités sur Solana.</p>
+            <h1>🚀 Solana AI Analyzer</h1>
+            <p class="subtitle">Votre copilote IA pour l'analyse de tokens sur Solana, basé sur les données de DexScreener.</p>
         </header>
         <main>
-            <div class="features-grid">
-                <a href="/tendances" class="feature-card">
-                    <h2>🔥 Top 50 Movers</h2>
-                    <p>Découvrez les 50 tokens avec le plus grand volume de transactions sur les dernières 24 heures.</p>
-                </a>
-                <a href="/gainers-losers" class="feature-card">
-                    <h2>📈 Top Gainers & Losers</h2>
-                    <p>Visualisez les plus grosses performances et les plus grosses chutes du marché Solana.</p>
-                </a>
-                <a href="/wallet-analyzer" class="feature-card">
-                    <h2>🧠 Analyseur de Wallet IA</h2>
-                    <p>Analysez n'importe quel wallet Solana pour évaluer sa rentabilité et découvrir ses stratégies.</p>
-                </a>
+            <div class="main-card">
+                <h2>🧠 Analyseur de Token IA</h2>
+                <p>Obtenez une analyse complète, un verdict d'investissement et un score de risque pour n'importe quel token Solana.</p>
+                <a href="/analyzer" class="btn-main">Lancer l'Analyseur</a>
             </div>
+            <a href="/tendances" class="secondary-link">Voir le Top 50 des tokens par volume 🔥</a>
         </main>
         <footer>
-            <p>Données fournies par Birdeye. Les analyses ne sont pas des conseils financiers.</p>
+            <p>Données fournies par DexScreener & Birdeye. Les analyses ne sont pas des conseils financiers.</p>
         </footer>
     </div>
 </body>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Analyseur de Wallet IA</title>
+    <title>Analyseur de Token IA</title>
     <style>
         :root {
             --primary-color: #14f195; --background-color: #0a0a0a; --surface-color: #1a1a1a;
@@ -23,14 +23,14 @@
 <body>
     <div class="container">
         <header>
-            <h1>🧠 Analyseur de Wallet IA</h1>
-            <p class="subtitle">Découvrez si un trader est rentable avant de copier ses trades.</p>
+            <h1>🧠 Analyseur de Token IA</h1>
+            <p class="subtitle">Entrez une adresse de token Solana pour obtenir une analyse complète.</p>
         </header>
         <main>
             <div class="form-container">
-                <form action="/wallet-analyzer" method="post">
-                    <input type="text" id="wallet" name="wallet" required placeholder="Collez l'adresse du wallet ici...">
-                    <input type="submit" value="Analyser le Wallet">
+                <form action="/analyzer" method="post">
+                    <input type="text" id="token" name="token" required placeholder="Collez l'adresse du token ici...">
+                    <input type="submit" value="Analyser le Token">
                 </form>
                 {% if error %}
                     <p class="error">{{ error }}</p>

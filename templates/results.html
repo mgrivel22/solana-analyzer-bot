@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Résultats d'Analyse</title>
     <style>
-        /* Le CSS est identique à la version précédente avec le scoring */
         :root { /* Couleurs */
             --primary-color: #14f195; --background-color: #121212; --surface-color: #1e1e1e;
             --text-color: #e0e0e0; --secondary-text-color: #888; --axiom-purple: #8A2BE2;
@@ -37,7 +36,7 @@
         .score-card h3 { margin-top: 0; font-size: 1.1rem; color: var(--secondary-text-color); }
         .score-value { font-size: 3rem; font-weight: bold; margin: 0.5rem 0; }
         .ai-verdict-card { grid-column: 1 / -1; border: 2px solid var(--primary-color); }
-        .ai-verdict-card .verdict { font-size: 2.5rem; font-weight: bold; }
+        .ai-verdict-card .verdict { font-size: 2.5rem; font-weight: bold; text-transform: uppercase; }
         .verdict-BUY-NOW, .verdict-POTENTIAL-BUY { color: var(--score-good); } .verdict-HOLD { color: var(--score-medium); } .verdict-WAIT, .verdict-HIGH-RISK { color: var(--score-bad); }
         .ai-summary { font-style: italic; font-size: 0.9em; color: #ccc; margin-top: 10px; }
         .chart-container { height: 550px; margin-top: 2rem; grid-column: 1 / -1; }

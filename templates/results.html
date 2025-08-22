@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Résultats d'Analyse</title>
     <style>
-        :root { /* Couleurs */
+        :root {
             --primary-color: #14f195; --background-color: #121212; --surface-color: #1e1e1e;
             --text-color: #e0e0e0; --secondary-text-color: #888; --axiom-purple: #8A2BE2;
             --score-bad: #dc3545; --score-medium: #ffc107; --score-good: #28a745;
@@ -16,7 +16,6 @@
         .top-nav { display: flex; justify-content: space-between; align-items: center; margin: 1rem 0 2rem; }
         .nav-link { color: var(--primary-color); text-decoration: none; font-size: 1.1rem; }
         .btn-main-trade { padding: 10px 20px; background-color: var(--axiom-purple); color: white; font-weight: bold; text-decoration: none; border-radius: 8px; transition: all 0.2s; }
-        .btn-main-trade:hover { background-color: #7b24cb; transform: scale(1.05); }
         .result-card { background-color: var(--surface-color); padding: 1.5rem 2rem; border-radius: 12px; }
         .card-header { margin-bottom: 1.5rem; border-bottom: 1px solid #333; padding-bottom: 1rem; }
         .card-header h2 { margin: 0; font-size: 1.8rem; display: inline-block; }
@@ -28,8 +27,7 @@
         .stat-box strong, .tools-box strong { color: var(--secondary-text-color); display: block; font-size: 0.9em; margin-bottom: 5px; text-transform: uppercase; }
         .stat-box p { margin: 0; font-size: 1.5rem; color: #fff; }
         .tools-buttons { display: flex; flex-direction: column; gap: 10px; margin-top: 1rem; }
-        .btn { display: block; color: white; text-align: center; padding: 10px; border-radius: 8px; text-decoration: none; font-weight: bold; transition: opacity 0.2s; }
-        .btn:hover { opacity: 0.8; }
+        .btn { display: block; color: white; text-align: center; padding: 10px; border-radius: 8px; text-decoration: none; font-weight: bold; }
         .btn-axiom-specific { background-color: var(--axiom-purple); } .btn-solscan { background-color: #1a5c8b; } .btn-rugcheck { background-color: #c79500; }
         .right-panel { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
         .score-card { background-color: #2a2a2a; padding: 1.5rem; border-radius: 8px; text-align: center; }

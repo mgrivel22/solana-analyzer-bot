@@ -3,60 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tendances Solana</title>
+    <title>Top Movers Solana</title>
     <style>
         :root { /* Couleurs */
             --primary-color: #14f195; --background-color: #121212; --surface-color: #1e1e1e;
             --text-color: #e0e0e0; --secondary-text-color: #888; --axiom-purple: #8A2BE2;
+            --gainer-color: #28a745;
         }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--background-color); color: var(--text-color); margin: 0; padding: 2rem; }
         .container { max-width: 900px; margin: 0 auto; }
-        h1, h2 { color: var(--primary-color); text-align: center; }
-        h2 { margin-top: 3rem; border-top: 1px solid #2a2a2a; padding-top: 2rem;}
+        h1 { color: var(--primary-color); text-align: center; }
         .top-nav { margin-bottom: 2rem; }
         .nav-link { color: var(--primary-color); text-decoration: none; font-size: 1.1rem; }
         .error { text-align: center; color: #ffc107; background-color: #2a2a2a; padding: 1rem; border-radius: 8px; }
 
-        /* Carte de la santé du marché */
-        .market-health-card { background-color: var(--surface-color); padding: 1.5rem 2rem; border-radius: 12px; margin-bottom: 2rem; text-align: center; border: 1px solid #2a2a2a; }
-        .market-health-card h2 { margin-top: 0; font-size: 1.5rem; border-top: none; padding-top: 0; }
-        .market-health-status { font-size: 2.5rem; font-weight: bold; padding: 10px 20px; border-radius: 8px; display: inline-block; }
-        .market-stats { display: flex; justify-content: space-around; margin-top: 1.5rem; flex-wrap: wrap; gap: 1.5rem;}
-        .stat { font-size: 1.1rem; } .stat strong { color: var(--secondary-text-color); display:block; margin-bottom: 5px; font-size: 0.9em;}
-
-        /* Tableau des tokens en tendance */
         .trending-table { width: 100%; border-collapse: collapse; background-color: var(--surface-color); border-radius: 12px; overflow: hidden; border: 1px solid #2a2a2a; }
         .trending-table th, .trending-table td { padding: 1rem; text-align: left; border-bottom: 1px solid #2a2a2a; }
         .trending-table th { font-size: 0.9em; text-transform: uppercase; color: var(--secondary-text-color); }
         .trending-table tr:last-child td { border-bottom: none; }
         .trending-table tr:hover { background-color: #252525; }
         .token-info { display: flex; align-items: center; }
-        .token-info img { width: 32px; height: 32px; vertical-align: middle; margin-right: 10px; border-radius: 50%; }
+        .token-info img { width: 32px; height: 32px; vertical-align: middle; margin-right: 10px; border-radius: 50%; background-color: #333;}
         .token-name { font-weight: bold; }
-        .price-change { font-weight: bold; }
+        .price-change { font-weight: bold; color: var(--gainer-color); }
         .btn-axiom { background-color: var(--axiom-purple); color: white; padding: 8px 12px; border-radius: 6px; text-decoration: none; font-size: 0.9em; font-weight: bold; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="top-nav"><a href="/" class="nav-link">← Retour à l'Analyseur</a></div>
-        <h1>🔥 Top des Tokens Solana</h1>
-        
+        <h1>🚀 Top 10 des "Movers" sur Solana</h1>
+
         {% if error %}
             <p class="error">{{ error }}</p>
-        {% elif market_stats %}
-        <div class="market-health-card">
-            <h2>Indicateur de Marché (Top 15 / 24h)</h2>
-            <div class="market-health-status" style="background-color: {{ market_health.color }}20; color: {{ market_health.color }};">{{ market_health.status }}</div>
-            <div class="market-stats">
-                <div class="stat"><strong>Volume Total (Top 15)</strong> {{ market_stats.volume|format_market_cap }}</div>
-                <div class="stat"><strong>Tendance Moyenne</strong> <span style="color: {{ '#28a745' if market_stats.avg_change > 0 else '#dc3545' }}">{{ "%.2f"|format(market_stats.avg_change) }}%</span></div>
-            </div>
-        </div>
-        {% endif %}
-
-        {% if trending_data %}
-        <h2>Basé sur le volume des dernières 24 heures</h2>
+        {% elif trending_data %}
+        <p style="text-align: center; color: var(--secondary-text-color); margin-bottom: 2rem;">Tokens avec la plus forte hausse de prix sur les dernières 24 heures.</p>
         <table class="trending-table">
             <thead><tr><th>#</th><th>Token</th><th>Prix (USD)</th><th>Chg. 24h</th><th></th></tr></thead>
             <tbody>
@@ -65,21 +46,24 @@
                     <td>{{ loop.index }}</td>
                     <td>
                         <div class="token-info">
-                            <img src="{{ token.logoURI }}" alt="logo" onerror="this.style.display='none'">
-                            <span class="token-name">{{ token.symbol }}</span>
+                            <img src="{{ token.logo }}" alt="logo" onerror="this.style.display='none'">
+                            <div>
+                                <div class="token-name">{{ token.name }}</div>
+                                <div style="font-size: 0.8em; color: var(--secondary-text-color);">${{ token.symbol }}</div>
+                            </div>
                         </div>
                     </td>
-                    <td>{{ token.price|format_price }}</td>
-                    <td><span class="price-change" style="color: {{ '#28a745' if token.priceChange24hPercent > 0 else '#dc3545' }}">{{ "%.2f"|format(token.priceChange24hPercent) }}%</span></td>
+                    <td>{{ token.price_usd|format_price }}</td>
+                    <td><span class="price-change">+{{ "%.2f"|format(token.price_change_24h_percent|float) }}%</span></td>
                     <td>
-                        <a href="https://axiom.trade/t/{{ token.address }}/@math96826" target="_blank" class="btn-axiom">Trader</a>
+                        <a href="https://axiom.trade/t/{{ token.token_address }}/@math96826" target="_blank" class="btn-axiom">Trader</a>
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
         {% else %}
-        <p class="error">Aucun token en tendance trouvé pour le moment.</p>
+        <p class="error">Aucun token trouvé pour le moment.</p>
         {% endif %}
     </div>
 </body>

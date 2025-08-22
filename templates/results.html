@@ -11,7 +11,7 @@
             --score-bad: #dc3545; --score-medium: #ffc107; --score-good: #28a745;
         }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--background-color); color: var(--text-color); margin: 0; padding: 2rem; }
-        .container { max-width: 1200px; margin: 0 auto; }
+        .container { max-width: 900px; margin: 0 auto; }
         h1 { color: var(--primary-color); text-align: center; }
         .top-nav { display: flex; justify-content: space-between; align-items: center; margin: 1rem 0 2rem; }
         .nav-link { color: var(--primary-color); text-decoration: none; font-size: 1.1rem; }
@@ -21,25 +21,18 @@
         .card-header h2 { margin: 0; font-size: 1.8rem; display: inline-block; }
         .card-header .symbol { font-size: 1.2rem; color: var(--secondary-text-color); margin-left: 10px; }
         .error { color: var(--score-bad); font-weight: bold; }
-        .main-content { display: grid; grid-template-columns: 1fr 2fr; gap: 2rem; }
-        .left-panel { display: flex; flex-direction: column; gap: 1.5rem; }
-        .stat-box, .tools-box { background-color: #2a2a2a; padding: 1rem; border-radius: 8px; }
+        .main-content { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; }
+        .stat-box, .tools-box, .score-card { background-color: #2a2a2a; padding: 1rem; border-radius: 8px; text-align: center; }
         .stat-box strong, .tools-box strong { color: var(--secondary-text-color); display: block; font-size: 0.9em; margin-bottom: 5px; text-transform: uppercase; }
         .stat-box p { margin: 0; font-size: 1.5rem; color: #fff; }
         .tools-buttons { display: flex; flex-direction: column; gap: 10px; margin-top: 1rem; }
         .btn { display: block; color: white; text-align: center; padding: 10px; border-radius: 8px; text-decoration: none; font-weight: bold; }
         .btn-axiom-specific { background-color: var(--axiom-purple); } .btn-solscan { background-color: #1a5c8b; } .btn-rugcheck { background-color: #c79500; }
-        .right-panel { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
-        .score-card { background-color: #2a2a2a; padding: 1.5rem; border-radius: 8px; text-align: center; }
-        .score-card h3 { margin-top: 0; font-size: 1.1rem; color: var(--secondary-text-color); }
-        .score-value { font-size: 3rem; font-weight: bold; margin: 0.5rem 0; }
+        .score-value { font-size: 2.5rem; font-weight: bold; }
         .ai-verdict-card { grid-column: 1 / -1; border: 2px solid var(--primary-color); }
-        .ai-verdict-card .verdict { font-size: 2.5rem; font-weight: bold; text-transform: uppercase; }
-        .verdict-BUY-NOW, .verdict-POTENTIAL-BUY { color: var(--score-good); } .verdict-HOLD { color: var(--score-medium); } .verdict-WAIT, .verdict-HIGH-RISK { color: var(--score-bad); }
+        .ai-verdict-card .verdict { font-size: 2rem; font-weight: bold; text-transform: uppercase; }
+        .verdict-BUY, .verdict-BUY-NOW, .verdict-POTENTIAL-BUY { color: var(--score-good); } .verdict-HOLD { color: var(--score-medium); } .verdict-WAIT, .verdict-HIGH-RISK { color: var(--score-bad); }
         .ai-summary { font-style: italic; font-size: 0.9em; color: #ccc; margin-top: 10px; }
-        .chart-container { height: 550px; margin-top: 2rem; grid-column: 1 / -1; }
-        iframe { border: none; width: 100%; height: 100%; border-radius: 8px; }
-        @media (max-width: 900px) { .main-content { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -53,44 +46,34 @@
         {% for result in results %}
         <div class="result-card">
             {% if result.error %}
-                <div class="card-header"><h2>Analyse Impossible</h2></div><p class="error">Erreur : {{ result.error }}</p>
+                <div class="card-header"><h2>Analyse Impossible</h2></div>
+                <p class="error">Erreur : {{ result.error }}</p>
             {% else %}
                 <div class="card-header">
-                    <h2>{{ result.token_name }}</h2><span class="symbol">${{ result.token_symbol }}</span>
+                    <h2>{{ result.token_name }}</h2>
+                    <span class="symbol">${{ result.token_symbol }}</span>
                 </div>
                 <div class="main-content">
-                    <div class="left-panel">
-                        <div class="stat-box"><strong>Prix Actuel</strong><p>{{ result.current_price|format_price }}</p></div>
-                        <div class="stat-box"><strong>Market Cap</strong><p>{{ result.market_cap|format_market_cap }}</p></div>
-                        <div class="score-card">
-                            <h3>Score Global</h3>
-                            <p class="score-value" style="color: {{ '#dc3545' if result.total_score < 40 else ('#ffc107' if result.total_score < 70 else '#28a745') }}">{{ result.total_score|round|int }}/100</p>
-                        </div>
-                         <div class="tools-box">
-                            <strong>Outils</strong>
-                            <div class="tools-buttons">
-                                <a href="https://axiom.trade/t/{{ result.token }}/@math96826" target="_blank" class="btn btn-axiom-specific">Trader ce Token</a>
-                                <a href="https://solscan.io/token/{{ result.token }}" target="_blank" class="btn btn-solscan">Explorer</a>
-                                <a href="https://rugcheck.xyz/tokens/{{ result.token }}" target="_blank" class="btn btn-rugcheck">Rapport Sécurité</a>
-                            </div>
+                    <div class="stat-box"><strong>Prix Actuel</strong><p>{{ result.current_price|format_price }}</p></div>
+                    <div class="score-card">
+                        <strong>Score Global</strong>
+                        <p class="score-value" style="color: {{ '#dc3545' if result.total_score < 40 else ('#ffc107' if result.total_score < 70 else '#28a745') }}">{{ result.total_score|round|int }}/100</p>
+                    </div>
+                    <div class="tools-box">
+                        <strong>Outils</strong>
+                        <div class="tools-buttons">
+                            <a href="https://axiom.trade/t/{{ result.token }}/@math96826" target="_blank" class="btn btn-axiom-specific">Trader</a>
+                            <a href="https://solscan.io/token/{{ result.token }}" target="_blank" class="btn btn-solscan">Solscan</a>
+                            <a href="https://rugcheck.xyz/tokens/{{ result.token }}" target="_blank" class="btn btn-rugcheck">RugCheck</a>
                         </div>
                     </div>
-                    <div class="right-panel">
-                        <div class="score-card ai-verdict-card">
-                            <h3>Verdict de l'IA</h3>
-                            <p class="score-value verdict-{{ result.ai_analysis.final_verdict|replace(' ', '-') }}">{{ result.ai_analysis.final_verdict }}</p>
-                            <p><strong>Probabilité de hausse : {{ result.ai_analysis.probability }}%</strong></p>
-                            <p class="ai-summary">"{{ result.ai_analysis.summary }}"</p>
-                        </div>
+                    <div class="score-card ai-verdict-card">
+                        <strong>Verdict de l'IA</strong>
+                        <p class="score-value verdict-{{ result.ai_analysis.final_verdict|replace(' ', '-') }}">{{ result.ai_analysis.final_verdict }}</p>
+                        <p><strong>Probabilité de hausse : {{ result.ai_analysis.probability }}%</strong></p>
+                        <p class="ai-summary">"{{ result.ai_analysis.summary }}"</p>
                     </div>
                 </div>
-                {% if result.pair_address %}
-                <div class="chart-container">
-                    <iframe src="https://dexscreener.com/solana/{{ result.pair_address }}?embed=1&theme=dark&info=0"></iframe>
-                </div>
-                {% else %}
-                <div style="text-align:center; margin-top:2rem; color: var(--secondary-text-color);">Graphique non disponible pour ce token.</div>
-                {% endif %}
             {% endif %}
         </div>
         {% endfor %}

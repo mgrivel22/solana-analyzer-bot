@@ -54,14 +54,18 @@ def format_market_cap(value: float) -> str:
 # --- Services ---
 class BirdeyeService:
     BASE_URL = "https://public-api.birdeye.so"
-    HEADERS = {"X-API-KEY": app.config['BIRDEYE_API_KEY']}
+    # MISE À JOUR : Ajout de l'en-tête 'x-chain' pour spécifier Solana
+    HEADERS = {
+        "X-API-KEY": app.config['BIRDEYE_API_KEY'],
+        "x-chain": "solana"
+    }
 
     @staticmethod
     def get_token_overview(token_address: str) -> Optional[Dict[str, Any]]:
         url = f"{BirdeyeService.BASE_URL}/defi/token_overview?address={token_address}"
         try:
             response = requests.get(url, headers=BirdeyeService.HEADERS)
-            response.raise_for_status()
+            response.raise_for_status() # Lève une exception pour les erreurs HTTP (comme 401)
             data = response.json()
             return data.get('data') if data.get('success') else None
         except requests.exceptions.RequestException as e:
@@ -70,7 +74,6 @@ class BirdeyeService:
 
     @staticmethod
     def get_trending_tokens() -> tuple[List[Dict[str, Any]], Optional[str]]:
-        # MISE À JOUR : Récupère 50 tokens
         url = f"{BirdeyeService.BASE_URL}/defi/tokenlist?sort_by=v24hUSD&sort_type=desc&limit=50"
         try:
             response = requests.get(url, headers=BirdeyeService.HEADERS)
@@ -120,7 +123,7 @@ def tendances():
     transformed_data = [{
         'logo': token.get('logoURI'), 'name': token.get('name'), 'symbol': token.get('symbol'),
         'price_usd': token.get('price'), 'price_change_24h_percent': token.get('priceChange24h'),
-        'token_address': token.get('address'), 'market_cap': token.get('mc') # MISE À JOUR : Ajout du market cap
+        'token_address': token.get('address'), 'market_cap': token.get('mc')
     } for token in trending_data]
     return render_template("tendances.html", trending_data=transformed_data, error=error)
 

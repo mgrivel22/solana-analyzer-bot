@@ -15,9 +15,10 @@
         h1 { color: var(--primary-color); text-align: center; }
         .nav-link { display: inline-block; margin-bottom: 2rem; color: var(--primary-color); text-decoration: none; }
         .content-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
-        .list-container h2 { text-align: center; }
+        .list-container h2 { text-align: center; color: var(--secondary-text-color); }
         .data-table { width: 100%; border-collapse: collapse; background-color: var(--surface-color); border-radius: 12px; overflow: hidden; }
         .data-table th, .data-table td { padding: 1rem; text-align: left; border-bottom: 1px solid #2a2a2a; }
+        .token-symbol { font-weight: bold; }
         .gainer { color: var(--gainer-color); font-weight: bold; }
         .loser { color: var(--loser-color); font-weight: bold; }
         @media (max-width: 800px) { .content-grid { grid-template-columns: 1fr; } }
@@ -30,7 +31,7 @@
         
         {% if error %}
             <p style="text-align:center; color: #ffc107;">{{ error }}</p>
-        {% elif data %}
+        {% elif data and (data.gainers or data.losers) %}
             <div class="content-grid">
                 <div class="list-container">
                     <h2>Top 10 Gainers</h2>
@@ -39,8 +40,8 @@
                         <tbody>
                             {% for item in data.gainers %}
                             <tr>
-                                <td>{{ item.symbol }}</td>
-                                <td class="gainer">+{{ item.gain_percent|round(2) }}%</td>
+                                <td><span class="token-symbol">{{ item.symbol }}</span></td>
+                                <td class="gainer">+{{ item.price_change_24h|round(2) }}%</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -53,8 +54,8 @@
                         <tbody>
                             {% for item in data.losers %}
                             <tr>
-                                <td>{{ item.symbol }}</td>
-                                <td class="loser">{{ item.loss_percent|round(2) }}%</td>
+                                <td><span class="token-symbol">{{ item.symbol }}</span></td>
+                                <td class="loser">{{ item.price_change_24h|round(2) }}%</td>
                             </tr>
                             {% endfor %}
                         </tbody>
